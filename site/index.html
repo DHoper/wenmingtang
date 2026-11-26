@@ -28,6 +28,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cactus+Classical+Serif&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="fonts/kai.css">
 <link rel="stylesheet" href="css/main.css">
+<link rel="stylesheet" href="css/mobile.css">
 </head>
 <body>
 <div class="app" id="app" data-phase="seat" data-orient="port">
@@ -51,7 +52,7 @@
   </div>
 
   <header class="top">
-    <a class="brand" href="./">問名堂</a>
+    <div class="top-l"><button type="button" class="back f-wood" id="backBtn" hidden aria-label="回上一步">返</button><a class="brand" href="./">問名堂</a></div>
     <div class="tools">
       <button type="button" class="chip f-wood" id="historyBtn" hidden>上回批命</button>
       <button type="button" class="chip f-wood" id="soundBtn" aria-pressed="true" aria-label="聲音">有聲</button>
@@ -75,7 +76,7 @@
     <p class="intro-line">廟口的算命攤，先生還沒收。<br>名字寫給他，筆畫、五格、八字幫你看。</p>
     <div class="intro-load" id="introLoad"><i id="introBar"></i></div>
     <button type="button" class="btn main" id="enter" disabled>入座</button>
-    <p class="intro-note">有聲音，嫌吵的話右上角可以關</p>
+    <p class="intro-note">有聲音，進去以後右上角可以關</p>
   </div>
 </div>
 <noscript><p style="color:#fff;padding:2em">要開啟 JavaScript 才看得到。</p></noscript>

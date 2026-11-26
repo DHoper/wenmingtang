@@ -21,6 +21,7 @@ CHECK = r"""() => {
   // 2) 文字被截斷（內容比框大）
   for (const el of document.querySelectorAll('#act button, #act .t, #act .s, .share-in button, .share-in a, .chip, .brand, #say')) {
     if (!vis(el)) continue;
+    if (el.matches('.chip, .back, .stick, .sign')) continue; // 這些有刻意外擴的可點範圍或印章
     if (el.scrollWidth > el.clientWidth + 2 && getComputedStyle(el).overflowX !== 'auto') issues.push('文字超框：' + (el.id || el.className || el.tagName) + '「' + el.textContent.trim().slice(0, 12) + '」');
   }
   // 3) 可點的東西太小
@@ -86,13 +87,14 @@ def run(size):
         pg.click("#giveCard"); pg.wait_for_timeout(1200)
         pg.select_option("#bY", "1961"); pg.select_option("#bM", "9"); pg.select_option("#bD", "27"); pg.select_option("#bH", "10")
         shot("birth_solar", "生辰帖：國曆 1961/9/27 10 點", 900)
-        pg.click("[data-cal=lunar]"); shot("birth_lunar", "生辰帖：切換農曆", 900)
-        pg.click("[data-cal=solar]"); pg.wait_for_timeout(300)
+        pg.click("#calBtn"); shot("birth_lunar", "生辰帖：切換農曆", 900)
+        pg.click("#calBtn"); pg.wait_for_timeout(500)
         pg.select_option("#bY", "1961"); pg.select_option("#bM", "9"); pg.select_option("#bD", "27"); pg.select_option("#bH", "10"); pg.wait_for_timeout(300)
-        pg.click("#birthForm button[type=submit]"); shot("topic", "問事：五塊招牌")
+        pg.click("#bOk"); shot("topic", "問事：五塊招牌")
         pg.click("[data-t=career]"); shot("topic_pick", "問事：點了「事業」", 900)
         pg.click("#goCount"); shot("count", "數筆畫進行中", 2200)
         pg.wait_for_selector(".hero", timeout=40000); shot("reading_top", "批命：最上面（評等、五格）", 1200)
+        pg.evaluate("document.querySelector('#grid5').scrollIntoView({block:'start'})"); shot("reading_grid", "批命：五格", 500)
         scroll_sheet(.3); shot("reading_mid", "批命：中段", 500)
         scroll_sheet(.6); shot("reading_bazi", "批命：八字段落附近", 500)
         scroll_sheet(1); shot("reading_end", "批命：最後（總結與按鈕）", 500)
@@ -100,19 +102,20 @@ def run(size):
         pg.click("[data-v=both]"); scroll_sheet(0)
         pg.click("#shareTop"); pg.wait_for_selector(".share-pic img", timeout=20000); shot("share", "分享面板", 800)
         pg.click("#shClose"); pg.wait_for_timeout(400)
-        pg.click("#toRename"); pg.wait_for_selector(".slip", timeout=30000); shot("rename_top", "改名：條件", 1200)
+        pg.click("#toRename"); pg.wait_for_selector(".stick", timeout=30000); shot("rename_top", "改名：上方", 1200)
+        pg.click("#condBtn"); shot("rename_cond", "改名：展開條件", 600); pg.click("#condBtn"); pg.wait_for_timeout(300)
         pg.evaluate("document.querySelector('#slips').scrollIntoView({block:'start'})"); shot("rename_slips", "改名：候選紅紙", 600)
         pg.fill("#ownIn", "家豪 宥廷"); pg.click("#ownGo"); pg.evaluate("document.querySelector('#slips').scrollIntoView({block:'start'})"); shot("rename_own", "改名：加入自己想的名字", 900)
-        pg.click(".slip"); shot("compare", "兩名對照", 900)
+        pg.click(".stick:not(.own)"); shot("compare", "兩名對照", 900)
         pg.click("#cFull"); pg.wait_for_selector(".hero"); shot("cand_reading", "候選名的完整批命", 900)
         # ── B 回訪＋上回批命 ──
         enter(); pg.click("#enter"); shot("seat_return", "回訪：入座（有「上回批命」）", 1300)
         pg.click("#historyBtn"); shot("history", "上回批命清單")
         # ── C 幫小孩取名 ──
-        pg.click("#hBack"); pg.wait_for_timeout(400)
+        pg.click("#backBtn"); pg.wait_for_timeout(500)
         pg.click("[data-m=name]"); pg.fill("#nameIn", "陳"); pg.dispatch_event("#nameIn", "input"); shot("kid_name", "幫小孩取名：寫姓氏")
         pg.click("#nameOk"); shot("kid_gender", "幫小孩取名：男孩女孩")
-        pg.click("[data-g=f]"); pg.wait_for_timeout(1000); pg.click("#noCard"); pg.wait_for_selector(".slip", timeout=30000); shot("kid_slips", "幫小孩取名：候選名", 1200)
+        pg.click("[data-g=f]"); pg.wait_for_timeout(1000); pg.click("#noCard"); pg.wait_for_selector(".stick", timeout=30000); shot("kid_slips", "幫小孩取名：候選名", 1200)
         # ── D 朋友連結 ──
         enter(U + "r/2.html#n=%E6%9E%97%E5%AE%B6%E8%B1%AA&g=m&s=1&gr=%E4%B8%8A&sc=84"); pg.click("#enter"); shot("friend", "朋友打開分享連結", 1300)
         pg.click("#seeFriend"); pg.wait_for_selector(".hero"); shot("friend_reading", "朋友看分享者的筆畫", 900)

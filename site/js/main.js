@@ -1,4 +1,6 @@
 // 問名堂：介面流程（手機優先；插畫舞台＋底部木桌操作區）
+// 手機版原則：一個畫面只有一個朱漆主按鈕；回上一步一律用頂列的「返」牌；
+// 舞台固定構圖（桌布上緣對齊操作區，頭頂一定露出）；批命、擬名、對照改成頂部頭像窗框，不再裁切舞台。
 import { initChars, initNames, initGivenNames, kangxi, tradOptions } from "./engine/chars.js";
 import { splitName } from "./engine/wuge.js";
 import { computeBazi, ZHI } from "./engine/bazi.js";
@@ -15,6 +17,12 @@ import { drawCard, cardBlob, shareLink, shareText, noDownload, framed } from "./
 const $ = s => document.querySelector(s);
 const app = $("#app"), say = $("#say"), act = $("#act"), sheet = $("#sheet"), paper = $("#paper"), paperText = $("#paperText"), canvas = $("#canvas"), viewport = $("#viewport");
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+// 斷句：一個子句不拆開（批語、標題用）；白話裡的「象名」不拆開
+const clauses = t => esc(t).split(/(?<=[，；。、！？　])/).filter(Boolean).map(c => `<span class="cl">${c}</span>`).join("");
+const prose = t => esc(t).replace(/「[^」]{1,8}」/g, m => `<span class="nw">${m}</span>`);
+const gtxt = g => g === "f" ? "坤造" : "乾造";
+// 一百以上的中文數字（民國年用）
+const num = n => n < 100 ? han(n) : "一百" + (n % 100 === 0 ? "" : n % 100 < 10 ? "零" + han(n % 100) : han(n % 100).replace(/^十/, "一十"));
 let fast = false;
 const sleep = ms => new Promise(r => setTimeout(r, fast ? Math.min(ms, 30) : ms));
 const load = f => fetch("js/data/" + f).then(r => { if (!r.ok) throw new Error(f); return r.json(); });
@@ -22,7 +30,7 @@ const store = {
   get(k, d) { try { return JSON.parse(localStorage.getItem("wenming:" + k)) ?? d; } catch (_) { return d; } },
   set(k, v) { try { localStorage.setItem("wenming:" + k, JSON.stringify(v)); } catch (_) {} },
 };
-const S = { mode: "read", chars: [], surnameLen: null, gender: null, birth: null, bazi: null, topic: "all", R: null, view: store.get("view", "both") };
+const S = { mode: "read", chars: [], surnameLen: null, gender: null, birth: null, bazi: null, topic: "all", R: null, view: store.get("view", "both"), pose: "speak", back: null };
 const ready = initChars(load);
 let L = null;
 
@@ -30,14 +38,17 @@ let L = null;
 $("#slotBrush").innerHTML = slot("props/brush");
 $("#slotToken").innerHTML = slot("props/token");
 $("#slotTable").innerHTML = slot("props/table");
-preload(["master/speak", "master/count", "master/approve", "master/stern"]);
+preload(["master/count", "master/approve", "master/stern"]);
 function pose(p) {
-  const holder = $("#slotMaster .slot"), src = `assets/master/${p === "write" ? "count" : p}.webp`;
+  S.pose = p === "write" ? "count" : p;
+  const holder = $("#slotMaster .slot"), src = `assets/master/${S.pose}.webp`;
   if (holder) crossfade(holder, src);
-  else $("#slotMaster").innerHTML = slot("master/" + p);
+  else $("#slotMaster").innerHTML = slot("master/" + S.pose);
 }
-pose("idle");
+pose("speak");
 
+const isRead = () => /^(reading|rename|compare)$/.test(app.dataset.phase);
+let paperH = 262;
 function layout() {
   const land = innerWidth >= 900 && innerWidth / innerHeight > 1.05;
   app.dataset.orient = land ? "land" : "port";
@@ -45,32 +56,44 @@ function layout() {
   if ($("#slotBg").dataset.k !== key) { $("#slotBg").innerHTML = slot(key); $("#slotBg").dataset.k = key; }
   const W = viewport.clientWidth, H = viewport.clientHeight;
   const cw = land ? 512 : 384, ch = land ? 512 : 688;
-  const s = Math.max(W / cw, H / ch);
-  const x = (W - cw * s) / 2;
-  let y;
-  if (land) y = (H - ch * s) / 2;
-  else {
-    // 直式：把錨點對齊操作區上緣。平常錨在桌布上緣（y=488），露出桌面與老師傅；
-    // 批命等長頁只留一條窄縫，錨在老師傅下巴（y=258），讓臉露出來。
+  let s, x, y;
+  if (land) {
+    s = Math.max(W / cw, H / ch); x = (W - cw * s) / 2; y = (H - ch * s) / 2;
+    canvas.style.removeProperty("--pt"); canvas.style.removeProperty("--ph"); paperH = 282;
+  } else {
+    // 直式：寬度剛好填滿，桌布上緣（y=488）對齊操作區上緣；老先生頭頂（y≈160）一定在頂列下方
+    const topH = app.querySelector(".top").offsetHeight;
     const sheetTop = sheet.getBoundingClientRect().top;
-    // 生辰帖這類高操作區：錨在老師傅胸口（y=300），整張臉留在縫裡
-    // 舞台露出不到 330px（小螢幕或操作區很高）時，對話改寫進操作區，錨點移到老師傅胸口
-    const tall = sheetTop - (app.querySelector(".top").offsetHeight) < 330 || sheetTop < innerHeight * 0.48;
-    const anchor = /^(reading|rename|compare)$/.test(app.dataset.phase) ? 288 : tall ? 300 : 488;
-    y = Math.max(sheetTop - ch * s, Math.min(0, sheetTop - anchor * s));
+    s = Math.max(W / cw, sheetTop / 488);
+    x = (W - cw * s) / 2;
+    y = Math.min(0, sheetTop - 488 * s);
+    const headTop = y + 160 * s;
+    if (headTop < topH + 2) y = Math.min(0, y + topH + 2 - headTop);
+    // 紅紙：上緣不碰頂列、下緣站在桌上、不超出看得到的舞台
+    const vTop = (topH + 8 - y) / s, vBot = (sheetTop - 8 - y) / s;
+    const pt = Math.max(132, vTop), pb = Math.min(394, vBot);
+    paperH = Math.max(0, pb - pt);
+    canvas.style.setProperty("--pt", pt.toFixed(1) + "px");
+    canvas.style.setProperty("--ph", paperH.toFixed(1) + "px");
+    app.classList.toggle("paper-off", paperH < 150);
   }
   const tf = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${s.toFixed(4)})`;
   if (canvas.style.transform !== tf) canvas.style.transform = tf;
-  // 畫面看得到的畫布左右邊界（畫布座標）：瘦長手機會裁掉畫布兩側，紅紙、毛筆據此往內收
   canvas.style.setProperty("--vl", Math.max(0, -x / s).toFixed(1) + "px");
   canvas.style.setProperty("--vr", Math.min(cw, (W - x) / s).toFixed(1) + "px");
-  app.classList.toggle("tall", !land && (sheet.getBoundingClientRect().top - app.querySelector(".top").offsetHeight < 330 || sheet.getBoundingClientRect().top < innerHeight * 0.48));
+  fitPaper();
 }
 let raf = 0;
 const relayout = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; layout(); }); };
 new ResizeObserver(relayout).observe(sheet);
 addEventListener("resize", relayout);
 new ResizeObserver(relayout).observe(viewport);
+// 手機鍵盤彈出時，操作區貼在鍵盤上面
+if (window.visualViewport) {
+  const vv = window.visualViewport;
+  const onVV = () => { const kb = Math.max(0, innerHeight - vv.height - vv.offsetTop); app.style.setProperty("--kb", (kb > 80 ? kb : 0) + "px"); app.classList.toggle("kb", kb > 80); relayout(); };
+  vv.addEventListener("resize", onVV); vv.addEventListener("scroll", onVV);
+}
 layout();
 
 function setPhase(p) {
@@ -78,7 +101,12 @@ function setPhase(p) {
   sheet.scrollTop = 0;
   relayout();
 }
+// 頂列「返」牌
+const backBtn = $("#backBtn");
+function setBack(fn) { S.back = fn; backBtn.hidden = !fn; }
+backBtn.onclick = () => { if (S.back) S.back(); };
 function speak(html) {
+  S.said = html;
   if (say.dataset.last === html) return;
   say.dataset.last = html;
   typeHTML(say, html); typeHTML($("#sayIn"), html);
@@ -86,6 +114,11 @@ function speak(html) {
   pulse(say, "pop", 400);
 }
 function toast(msg) { const t = document.createElement("div"); t.className = "toast f-slip"; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 2600); }
+// 批命、擬名、對照頁頂端：老先生在窗框裡，旁邊是他說的話
+function rtop(title, sub, html, extra = "") {
+  return `<div class="rtop"><span class="medal" aria-hidden="true"><i style="background-image:url(assets/master/${S.pose}.webp)"></i></span>
+    <div class="rtop-r"><p class="who">${title}${sub ? `<small>${sub}</small>` : ""}</p><p class="rsay">${html}</p></div>${extra}</div>`;
+}
 
 // ───────── 紅紙 ─────────
 function currentSplit() {
@@ -93,44 +126,47 @@ function currentSplit() {
   if (S.chars.length < 2) return { surname: S.chars, given: [] };
   return splitName(S.chars, S.surnameLen);
 }
+function fitPaper() {
+  const n = paperText.querySelectorAll(".c").length || 1;
+  const room = paperH - 44;
+  const fs = Math.max(24, Math.min(48, Math.floor(room / (n * 1.1 + 0.4))));
+  paperText.style.fontSize = fs + "px";
+}
 function renderPaper(opts = {}) {
   const { surname, given } = opts.split || currentSplit();
   paper.classList.toggle("empty", !surname.length);
-  const cell = (ch, i) => `<span class="c${opts.newIndex === i ? " new" : ""}">${esc(ch)}<span class="n"></span><span class="rs"></span></span>`;
-  let html = surname.map(cell).join("");
-  if (given.length) html += `<span class="split" aria-hidden="true"></span>` + given.map((c, i) => cell(c, surname.length + i)).join("");
-  paperText.innerHTML = html;
-  const n = surname.length + given.length;
-  paperText.style.fontSize = n >= 5 ? "36px" : n === 4 ? "42px" : "48px";
+  const cell = (ch, i, cls = "") => `<span class="c${cls}${opts.newIndex === i ? " new" : ""}">${esc(ch)}<span class="n"></span><span class="rs"></span></span>`;
+  paperText.innerHTML = surname.map((c, i) => cell(c, i)).join("") + given.map((c, i) => cell(c, surname.length + i, i === 0 ? " g1" : "")).join("");
+  fitPaper();
   $("#seal").classList.remove("on");
 }
 
 // ───────── 入座 ─────────
 function seat() {
-  setPhase("seat"); pose("idle");
+  setPhase("seat"); pose("speak"); setBack(null);
   S.chars = []; S.surnameLen = null; S.R = null; renderPaper(); $("#slotToken").classList.remove("on");
   speak(store.get("visited", false) ? `又來啦，坐。<span class="q">今天看誰的名字？</span>` : `來，坐。<span class="q">名字寫給我看。</span>`);
   store.set("visited", true);
   act.innerHTML = `<button type="button" class="prop red seat-main" data-m="read"><span class="in"><span class="t">看名字</span><span class="s">筆畫、五格、三才一起看<br>有生日，連八字也看</span></span></button>
-    <div class="seat-sub"><button type="button" class="opt" data-m="name">幫小孩取名</button></div>`;
+    <div class="seat-sub"><button type="button" class="opt small" data-m="name">幫小孩取名</button></div>`;
   act.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { S.mode = b.dataset.m; askName(); });
   refreshHistory();
 }
 
 // ───────── 報名 ─────────
 function askName() {
-  setPhase("name"); pose("speak");
-  speak(S.mode === "name" ? `小孩<span class="q">姓什麼？</span>寫在紅紙上。` : `名字寫給我看，<span class="q">寫全名。</span>`);
+  setPhase("name"); pose("speak"); setBack(seat);
+  const kid = S.mode === "name";
+  speak(kid ? `小孩<span class="q">姓什麼？</span>寫在紅紙上。` : `名字寫給我看，<span class="q">寫全名。</span>`);
   act.innerHTML = `<form class="pen" id="penForm" autocomplete="off">
-      <label class="h" for="nameIn">${S.mode === "name" ? "小孩的姓" : "全名"}</label>
-      <input id="nameIn" maxlength="${S.mode === "name" ? 2 : 5}" enterkeyhint="done" placeholder="${S.mode === "name" ? "例如：林" : "例如：林家豪"}" value="${esc(S.chars.join(""))}">
+      <label class="sr" for="nameIn">${kid ? "小孩的姓" : "全名"}</label>
+      <input id="nameIn" maxlength="${kid ? 2 : 5}" enterkeyhint="done" placeholder="${kid ? "例如：林" : "例如：林家豪"}" value="${esc(S.chars.join(""))}">
       <div id="nameNote"></div>
-      <div class="row"><button type="button" class="btn ghost" id="backSeat">先不了</button><button type="submit" class="btn main" id="nameOk" disabled>就這個名字</button></div>
+      <button type="submit" class="btn main wide" id="nameOk" disabled>${kid ? "就這個姓" : "就這個名字"}</button>
     </form>`;
   const inp = $("#nameIn");
   inp.oninput = () => onNameInput(inp.value);
-  $("#penForm").onsubmit = e => { e.preventDefault(); if (!$("#nameOk").disabled) askGender(); };
-  $("#backSeat").onclick = seat;
+  $("#penForm").onsubmit = e => { e.preventDefault(); if (!$("#nameOk").disabled) { inp.blur(); askGender(); } };
   paper.onclick = () => inp.focus();
   onNameInput(inp.value);
   setTimeout(() => inp.focus({ preventScroll: true }), 80);
@@ -155,7 +191,7 @@ async function onNameInput(raw) {
   renderPaper({ newIndex: chars.length > prev ? chars.length - 1 : -1 });
   if (chars.length > prev) sfx("brush");
   let html = "";
-  if (conv.length) html += `<p class="fine">筆畫要用康熙字典的寫法來算，我先幫你改成繁體字。</p>`;
+  if (conv.length) html += `<p class="fine">筆畫要照康熙字典算，我先幫你寫成繁體字。</p>`;
   for (const m of multi) html += `<p class="fine">是哪一個字？</p><div class="opts">${m.opts.map(o => `<button type="button" class="opt" data-i="${m.i}" data-c="${esc(o)}" aria-pressed="${S.chars[m.i] === o}">${esc(o)}</button>`).join("")}</div>`;
   if (unknown.length) html += `<p class="fine">「${esc(unknown.join("、"))}」這字我字典翻不到，筆畫不敢亂算，換個寫法看看。</p>`;
   const sp = currentSplit();
@@ -165,7 +201,8 @@ async function onNameInput(raw) {
       <button type="button" class="opt" data-sl="1" aria-pressed="${sp.surname.length === 1}">${esc(chars[0])}</button>
       <button type="button" class="opt" data-sl="2" aria-pressed="${sp.surname.length === 2}">${esc(two)}</button></div>`;
   }
-  const note = $("#nameNote"); note.innerHTML = html;
+  const note = $("#nameNote"); if (!note) return;
+  note.innerHTML = html;
   note.querySelectorAll("[data-c]").forEach(b => b.onclick = () => { S.chars[+b.dataset.i] = b.dataset.c; onNameInput(S.chars.join("")); });
   note.querySelectorAll("[data-sl]").forEach(b => b.onclick = () => { S.surnameLen = +b.dataset.sl; onNameInput(S.chars.join("")); });
   $("#nameOk").disabled = !(!unknown.length && (S.mode === "name" ? chars.length >= 1 && chars.length <= 2 : chars.length >= 2 && chars.length <= 5));
@@ -173,19 +210,18 @@ async function onNameInput(raw) {
 
 // ───────── 乾坤 ─────────
 function askGender() {
-  setPhase("qiankun"); pose("speak");
+  setPhase("qiankun"); pose("speak"); setBack(askName);
   speak(S.mode === "name" ? `<span class="q">男孩還是女孩？</span>還不知道就先選一個。` : `<span class="q">男生還是女生？</span>`);
   act.innerHTML = `<div class="tokens" role="group" aria-label="乾坤">
-      <button type="button" class="tk" data-g="m" aria-pressed="${S.gender === "m"}"><span class="face"><span class="vt">乾造</span></span><span class="s">男命</span></button>
-      <button type="button" class="tk" data-g="f" aria-pressed="${S.gender === "f"}"><span class="face"><span class="vt">坤造</span></span><span class="s">女命</span></button>
-    </div><div class="row"><button type="button" class="btn ghost" id="backName">重寫名字</button></div>`;
+      <button type="button" class="tk" data-g="m" aria-pressed="${S.gender === "m"}" aria-label="乾造，男命"><span class="face"><span class="vt">乾造</span></span><span class="s">男命</span></button>
+      <button type="button" class="tk" data-g="f" aria-pressed="${S.gender === "f"}" aria-label="坤造，女命"><span class="face"><span class="vt">坤造</span></span><span class="s">女命</span></button>
+    </div>`;
   act.querySelectorAll("[data-g]").forEach(b => b.onclick = async () => {
     if (act.dataset.busy) return; act.dataset.busy = 1;
     S.gender = b.dataset.g; b.setAttribute("aria-pressed", "true"); b.classList.add("pick"); sfx("wood");
     $("#slotToken").classList.add("on"); pulse($("#slotToken"), "drop", 600);
     await sleep(520); delete act.dataset.busy; askBirth();
   });
-  $("#backName").onclick = askName;
 }
 
 // ───────── 生辰 ─────────
@@ -195,8 +231,9 @@ async function loadLunar() {
   L = { Solar: window.Solar, Lunar: window.Lunar, LunarMonth: window.LunarMonth, LunarYear: window.LunarYear };
   return L;
 }
+const afterBirth = () => S.mode === "name" ? doNaming() : askTopic();
 function askBirth() {
-  setPhase("birth"); pose("speak");
+  setPhase("birth"); pose("speak"); setBack(askGender);
   speak(S.mode === "name" ? `小孩<span class="q">幾月幾號生的？</span>還沒生，預產期也可以。` : `<span class="q">生日方便給嗎？</span>有的話算得比較準。`);
   act.innerHTML = `<div class="props">
       <button type="button" class="prop red" id="giveCard"><span class="in"><span class="t">給生日</span><span class="s">八字、生肖也看</span></span></button>
@@ -204,87 +241,100 @@ function askBirth() {
     </div>`;
   loadLunar().catch(() => {});
   $("#giveCard").onclick = openBirthCard;
-  $("#noCard").onclick = () => { S.birth = null; S.bazi = null; S.mode === "name" ? doNaming() : askTopic(); };
+  $("#noCard").onclick = () => { S.birth = null; S.bazi = null; afterBirth(); };
 }
 const lunarDay = d => d === 10 ? "初十" : d === 20 ? "二十" : d === 30 ? "三十" : ["初", "十", "廿"][Math.floor((d - 1) / 10)] + "一二三四五六七八九"[(d - 1) % 10];
+const LMON = ["", "正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "臘"];
+// 生辰帖：一張宣紙帖，用毛筆字寫出生日；每一段點了跳出手機自己的滾輪選單
 function openBirthCard() {
+  setBack(askBirth);
   speak(`國曆農曆都可以。<span class="q">幾點生的知道嗎？</span>不知道也沒關係。`);
-  act.innerHTML = `<form class="birth" id="birthForm" autocomplete="off">
-      <div class="seg" role="group" aria-label="曆法"><button type="button" data-cal="solar">國曆</button><button type="button" data-cal="lunar">農曆</button></div>
-      <div class="wheels">
-        <label>年<select id="bY"></select></label><label>月<select id="bM"></select></label><label>日<select id="bD"></select></label>
-      </div>
-      <label class="leap" hidden><input type="checkbox" id="bLeap"> 閏月</label>
-      <div class="wheels"><label class="w2">時辰<select id="bH"></select></label><label>分<select id="bMi"></select></label></div>
-      <label>出生地<select id="bP"></select></label>
-      <details><summary>夜裡 11 點後出生？</summary>
-        <div class="seg" role="group" aria-label="子時換日"><button type="button" data-zi="early">23 點就算隔天</button><button type="button" data-zi="split">過 0 點才算隔天</button></div>
-        <p class="fine" style="color:#ffe2c4;margin-top:6px">這有兩派講法。我照 23 點就算隔天。</p>
-      </details>
-      <p class="preview" id="bPreview"></p>
-      <div class="row"><button type="button" class="btn ghost" id="bCancel">先不用</button><button type="submit" class="btn main">好，就這天</button></div>
-    </form>`;
+  act.innerHTML = `<form class="tie f-slip" id="birthForm" autocomplete="off">
+      <div class="tie-head"><span class="tie-t">生辰帖</span><button type="button" class="opt cal" id="calBtn" aria-label="國曆或農曆，點了切換"></button></div>
+      <p class="tie-body">
+        <label class="w"><span id="tY"></span><select id="bY" aria-label="出生年"></select></label><label class="w"><span id="tM"></span><select id="bM" aria-label="出生月"></select></label><label class="w"><span id="tD"></span><select id="bD" aria-label="出生日"></select></label>
+        <button type="button" class="opt leap" id="leapBtn" hidden aria-pressed="false">閏月</button>
+        <br><label class="w"><span id="tH"></span><select id="bH" aria-label="出生時辰"></select></label><label class="w" id="wMi"><span id="tMi"></span><select id="bMi" aria-label="出生分鐘"></select></label>
+        <br><span class="tie-txt">生在</span><label class="w"><span id="tP"></span><select id="bP" aria-label="出生地"></select></label>
+      </p>
+      <button type="button" class="tie-zi" id="ziBtn" aria-pressed="true"></button>
+      <p class="tie-pv" id="bPreview"></p>
+    </form>
+    <div class="row"><button type="button" class="btn ghost" id="bCancel">先不用</button><button type="button" class="btn main" id="bOk">就這樣算</button></div>`;
   sfx("paper");
-  const f = $("#birthForm"), Y = $("#bY"), M = $("#bM"), D = $("#bD"), H = $("#bH"), Mi = $("#bMi"), P = $("#bP"), leap = f.querySelector(".leap");
+  const Y = $("#bY"), M = $("#bM"), D = $("#bD"), H = $("#bH"), Mi = $("#bMi"), P = $("#bP"), leapBtn = $("#leapBtn");
   const prev = S.birth || store.get("birth", null);
-  let cal = prev?.calendar || "solar", zi = prev?.ziRule || "early";
+  let cal = prev?.calendar || "solar", zi = prev?.ziRule || "early", leap = !!prev?.leap;
   const nowY = new Date().getFullYear();
-  Y.innerHTML = Array.from({ length: nowY + 2 - 1920 + 1 }, (_, i) => nowY + 2 - i).map(y => `<option value="${y}">${y}・${y > 1911 ? "民" + (y - 1911) : "民前" + (1912 - y)}</option>`).join("");
-  M.innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
-  H.innerHTML = `<option value="">不知時辰</option>` + Array.from({ length: 24 }, (_, h) => `<option value="${h}">${String(h).padStart(2, "0")} 點（${ZHI[Math.floor((h + 1) / 2) % 12]}時）</option>`).join("");
-  Mi.innerHTML = Array.from({ length: 60 }, (_, m) => `<option value="${m}">${String(m).padStart(2, "0")}</option>`).join("");
+  const yName = y => y > 1911 ? `民國${num(y - 1911)}年` : `民前${num(1912 - y)}年`;
+  Y.innerHTML = Array.from({ length: nowY + 2 - 1920 + 1 }, (_, i) => nowY + 2 - i).map(y => `<option value="${y}">${y}　${yName(y)}</option>`).join("");
+  H.innerHTML = `<option value="">不知道幾點</option>` + Array.from({ length: 24 }, (_, h) => `<option value="${h}">${h} 點（${ZHI[Math.floor((h + 1) / 2) % 12]}時）</option>`).join("");
+  Mi.innerHTML = Array.from({ length: 60 }, (_, m) => `<option value="${m}">${m} 分</option>`).join("");
   P.innerHTML = `<optgroup label="臺灣">${PLACES.filter(p => p[2] === "Asia/Taipei").map(p => `<option>${p[0]}</option>`).join("")}</optgroup><optgroup label="海外">${PLACES.filter(p => p[2] !== "Asia/Taipei").map(p => `<option>${p[0]}</option>`).join("")}</optgroup>`;
-  Y.value = prev?.y || (S.mode === "name" ? nowY : 1990); M.value = prev?.m || 1; P.value = prev?.place || "臺北市";
+  Y.value = prev?.y || (S.mode === "name" ? nowY : 1990); P.value = prev?.place || "臺北市";
   H.value = prev && prev.h !== null && prev.h !== undefined ? prev.h : ""; Mi.value = prev?.mi || 0;
+  const fillMonths = () => { const keep = +M.value || prev?.m || 1; M.innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${cal === "lunar" ? LMON[i + 1] + "月" : (i + 1) + " 月"}</option>`).join(""); M.value = keep; };
   const fillDays = () => {
     const y = +Y.value, m = +M.value; let n = 31;
     if (cal === "solar") n = new Date(y, m, 0).getDate();
     else if (L) {
       const lm = L.LunarYear.fromYear(y).getLeapMonth();
-      leap.hidden = lm !== m; if (lm !== m) $("#bLeap").checked = false;
-      try { n = L.LunarMonth.fromYm(y, $("#bLeap").checked ? -m : m).getDayCount(); } catch (_) { n = 30; }
+      leapBtn.hidden = lm !== m; if (lm !== m) leap = false;
+      try { n = L.LunarMonth.fromYm(y, leap ? -m : m).getDayCount(); } catch (_) { n = 30; }
     } else n = 30;
+    if (cal === "solar") leapBtn.hidden = true;
     const keep = +D.value || prev?.d || 1;
-    D.innerHTML = Array.from({ length: n }, (_, i) => `<option value="${i + 1}">${cal === "lunar" ? lunarDay(i + 1) : i + 1}</option>`).join("");
+    D.innerHTML = Array.from({ length: n }, (_, i) => `<option value="${i + 1}">${cal === "lunar" ? lunarDay(i + 1) : (i + 1) + " 日"}</option>`).join("");
     D.value = Math.min(keep, n);
+    leapBtn.setAttribute("aria-pressed", leap);
   };
-  const input = () => ({ calendar: cal, y: +Y.value, m: +M.value, d: +D.value, leap: cal === "lunar" && $("#bLeap").checked, h: H.value === "" ? null : +H.value, mi: +Mi.value, place: P.value, ziRule: zi });
+  const write = () => {
+    const y = +Y.value, m = +M.value, d = +D.value, h = H.value;
+    $("#calBtn").textContent = cal === "lunar" ? "農曆" : "國曆";
+    $("#tY").textContent = yName(y);
+    $("#tM").textContent = cal === "lunar" ? `${leap ? "閏" : ""}${LMON[m]}月` : `${num(m)}月`;
+    $("#tD").textContent = cal === "lunar" ? lunarDay(d) : `${num(d)}日`;
+    $("#tH").textContent = h === "" ? "時辰不知" : `${ZHI[Math.floor((+h + 1) / 2) % 12]}時`;
+    $("#wMi").hidden = h === "";
+    $("#tMi").textContent = h === "" ? "" : `${num(+h)}點${+Mi.value ? num(+Mi.value) + "分" : "整"}`;
+    $("#tP").textContent = P.value;
+    $("#ziBtn").innerHTML = zi === "early" ? `夜裡十一點以後出生，<b>算隔天</b>` : `夜裡十一點以後出生，<b>過十二點才算隔天</b>`;
+  };
+  const input = () => ({ calendar: cal, y: +Y.value, m: +M.value, d: +D.value, leap: cal === "lunar" && leap, h: H.value === "" ? null : +H.value, mi: +Mi.value, place: P.value, ziRule: zi });
   const placeOf = n => PLACES.find(p => p[0] === n);
   const update = async () => {
-    Mi.disabled = H.value === "";
+    write();
     const pv = $("#bPreview");
     try {
       await loadLunar();
       const inp = input(), b = computeBazi({ ...inp, place: placeOf(inp.place) }, L), ts = b.trueSolar;
-      const dst = ts && placeOf(inp.place)[2] === "Asia/Taipei" && ts.offsetHours === 9;
-      pv.innerHTML = `${b.pillars.map(p => p.gz).join("　")}<small>${b.lunarText.replace("腊", "臘")}${ts ? `・真太陽時 ${String(ts.h).padStart(2, "0")}:${String(ts.mi).padStart(2, "0")}（${ts.shiftMin >= 0 ? "+" : ""}${ts.shiftMin} 分${dst ? "，那年有日光節約時間" : ""}）` : "・沒時辰，只排三柱"}</small>`;
+      pv.innerHTML = `八字　<b>${b.pillars.map(p => p.gz).join("　")}</b><br>${b.lunarText.replace("腊", "臘")}${ts ? `・照當地日頭算是 ${ts.h} 點 ${ts.mi} 分` : "・沒時辰，只排三柱"}`;
     } catch (_) { pv.textContent = "萬年曆翻不到這一天，換一天看看。"; }
   };
-  const setCal = async c => { cal = c; f.querySelectorAll("[data-cal]").forEach(b => b.setAttribute("aria-pressed", b.dataset.cal === c)); leap.hidden = true; if (c === "lunar") await loadLunar().catch(() => {}); fillDays(); update(); };
-  const setZi = z => { zi = z; f.querySelectorAll("[data-zi]").forEach(b => b.setAttribute("aria-pressed", b.dataset.zi === z)); update(); };
-  f.querySelectorAll("[data-cal]").forEach(b => b.onclick = () => setCal(b.dataset.cal));
-  f.querySelectorAll("[data-zi]").forEach(b => b.onclick = () => setZi(b.dataset.zi));
+  const setCal = async c => { cal = c; leap = false; if (c === "lunar") await loadLunar().catch(() => {}); fillMonths(); fillDays(); update(); };
+  $("#calBtn").onclick = () => { sfx("wood"); pulse($("#calBtn"), "flipx", 500); setCal(cal === "solar" ? "lunar" : "solar"); };
+  $("#ziBtn").onclick = () => { zi = zi === "early" ? "split" : "early"; $("#ziBtn").setAttribute("aria-pressed", zi === "early"); update(); };
+  leapBtn.onclick = () => { leap = !leap; fillDays(); update(); };
   [Y, M].forEach(el => el.onchange = () => { fillDays(); update(); });
-  $("#bLeap").onchange = () => { fillDays(); update(); };
   [D, H, Mi, P].forEach(el => el.onchange = update);
-  $("#bCancel").onclick = () => { S.birth = null; S.bazi = null; S.mode === "name" ? doNaming() : askTopic(); };
-  f.onsubmit = async e => {
-    e.preventDefault();
+  $("#bCancel").onclick = () => { S.birth = null; S.bazi = null; afterBirth(); };
+  $("#bOk").onclick = async () => {
     try {
       await loadLunar();
       S.birth = input(); store.set("birth", S.birth); sfx("paper");
       S.bazi = computeBazi({ ...S.birth, place: placeOf(S.birth.place) }, L);
-      S.mode === "name" ? doNaming() : askTopic();
+      afterBirth();
     } catch (_) { toast("萬年曆翻不到這天，換一天看看"); }
   };
-  setCal(cal); setZi(zi);
+  if (prev?.m) { fillMonths(); M.value = prev.m; }
+  setCal(cal).then(() => { if (prev?.m) { M.value = prev.m; leap = !!prev.leap && cal === "lunar"; fillDays(); if (prev.d) D.value = prev.d; update(); } });
 }
 
 // ───────── 問事（招牌） ─────────
 function askTopic() {
-  setPhase("topic"); pose("speak");
+  setPhase("topic"); pose("speak"); setBack(() => S.birth ? openBirthCard() : askBirth());
   speak(`<span class="q">特別想問哪方面？</span>沒有的話我就整個看。`);
-  act.innerHTML = `<div class="signs" role="group" aria-label="招牌">${TOPICS.map(([k, t]) => `<button type="button" class="sign" data-t="${k}" aria-pressed="${S.topic === k}"><span class="t vt">${t}</span></button>`).join("")}</div>
+  act.innerHTML = `<div class="signs" role="group" aria-label="想問的事">${TOPICS.map(([k, t]) => `<button type="button" class="sign" data-t="${k}" aria-pressed="${S.topic === k}"><span class="t vt">${t}</span></button>`).join("")}</div>
     <button type="button" class="btn main wide" id="goCount">請先生算</button>`;
   act.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { S.topic = b.dataset.t; act.querySelectorAll(".sign").forEach(x => x.setAttribute("aria-pressed", x === b)); sfx("chime"); pulse(b, "swing", 1200); });
   $("#goCount").onclick = count;
@@ -292,14 +342,14 @@ function askTopic() {
 
 // ───────── 數筆畫 ─────────
 async function count() {
-  setPhase("count"); pose("count"); fast = false;
+  setPhase("count"); pose("count"); setBack(null); fast = false;
   const sp = currentSplit();
   const R = reading({ surname: sp.surname, given: sp.given, gender: S.gender, topic: S.topic, bazi: S.bazi });
   S.R = R;
-  const skip = document.createElement("button"); skip.className = "btn ghost skip"; skip.textContent = "快一點"; skip.onclick = () => { fast = true; skip.remove(); };
+  const skip = document.createElement("button"); skip.className = "btn ghost skip"; skip.textContent = "直接看結果"; skip.onclick = () => { fast = true; skip.remove(); };
   document.body.append(skip);
   speak(`<span class="q">我來算一下。</span>`);
-  act.innerHTML = `<div class="grid5" id="grid5">${gridTiles(R, true)}</div><p class="sancai pending" id="scLine" style="opacity:0">三才 ${R.sancai.key.split("").join("・")}　${R.sancai.level}</p><div id="countBazi"></div>`;
+  act.innerHTML = `<div class="grid5" id="grid5">${gridTiles(R, true)}</div><p class="sancai pending" id="scLine" style="opacity:0">三才　${R.sancai.key.split("").join("・")}　${R.sancai.level}</p><div id="countBazi"></div>`;
   renderPaper();
   const cells = [...paperText.querySelectorAll(".c")];
   for (const [i, el] of cells.entries()) {
@@ -310,8 +360,6 @@ async function count() {
     el.classList.add("shown");
     await sleep(380);
   }
-  if (sp.surname.length === 1) paperText.insertAdjacentHTML("afterbegin", `<span class="v" title="虛筆一畫">虛一</span>`);
-  if (sp.given.length === 1) paperText.insertAdjacentHTML("beforeend", `<span class="v" title="虛筆一畫">虛一</span>`);
   await sleep(250);
   for (const [j, k] of GRID_KEYS.entries()) { act.querySelector(`.g[data-k=${k}]`).classList.remove("pending"); sfx("tick", 1.2 + j * 0.05); await sleep(330); }
   $("#scLine").style.opacity = 1;
@@ -333,16 +381,18 @@ async function count() {
   showReading(R);
 }
 
+const LV_SHORT = { 吉多於凶: "半吉", 凶多於吉: "半凶" };
+const cellOf = g => `${g.n}畫<br>${g.el}・${LV_SHORT[g.level] || g.level}`;
 function gridTiles(R, pending, asButtons = false) {
   return GRID_KEYS.map(k => {
     const g = R.wuge[k], cls = g.lv >= 1 ? "good" : g.lv <= -1 ? "bad" : "";
     const tag = asButtons ? "button" : "div";
-    return `<${tag} ${asButtons ? 'type="button"' : ""} class="g${pending ? " pending" : ""}" data-k="${k}" aria-label="${GRID_INFO[k].label} ${g.n} 畫，${g.el}，${g.level}"><span class="k">${GRID_INFO[k].label}</span><span class="num">${g.n}</span><span class="el e-${g.el}">${g.el}</span><span class="lv ${cls}">${({ 吉多於凶: "半吉", 凶多於吉: "半凶" })[g.level] || g.level}</span></${tag}>`;
+    return `<${tag} ${asButtons ? 'type="button"' : ""} class="g${pending ? " pending" : ""}" data-k="${k}" aria-label="${GRID_INFO[k].label} ${g.n} 畫，${g.el}，${g.level}"><span class="k">${GRID_INFO[k].label}</span><span class="num">${g.n}</span><span class="el e-${g.el}">${g.el}</span><span class="lv ${cls}">${LV_SHORT[g.level] || g.level}</span></${tag}>`;
   }).join("");
 }
 function baziBlock(b) {
   const max = Math.max(...Object.values(b.share));
-  const colors = { 木: "#4f8a5b", 火: "#c4432f", 土: "#a5803e", 金: "#c4b8a2", 水: "#3d6f9a" };
+  const colors = { 木: "#3f7a4b", 火: "#b8392a", 土: "#9a7434", 金: "#c9a13b", 水: "#2f5f8c" };
   return `<div class="pillars">${b.pillars.map(p => `<div class="pillar"><span>${p.name}柱</span><b>${p.gz}</b><span>${p.ganGod}</span></div>`).join("")}</div>
     <div class="bars">${"木火土金水".split("").map(e => `<div class="bar${e === b.yong ? " yong" : ""}"><span>${e}</span><i><b style="background:${colors[e]}" data-w="${Math.round(b.share[e] / max * 100)}%"></b></i><em>${Math.round(b.share[e] * 100)}%</em></div>`).join("")}</div>`;
 }
@@ -351,38 +401,36 @@ function baziBlock(b) {
 function showReading(R, opts = {}) {
   setPhase("reading");
   pose(R.renameAdvised ? "stern" : "approve");
+  setBack(opts.back || seat);
   renderPaper({ split: { surname: [...R.surname], given: [...R.given] } });
   paperText.querySelectorAll(".c").forEach((el, i) => { el.classList.add("shown"); el.querySelector(".n").textContent = han(R.chars[i].strokes); });
   $("#seal").classList.add("on");
-  speak(R.renameAdvised ? `這個名字喔……<span class="q">我就直說了。</span>` : R.grade === "上上" || R.grade === "上" ? `<span class="q">這名字不錯。</span>你看看。` : `<span class="q">還可以，</span>有幾個所在要注意。`);
+  const line = opts.say || (R.renameAdvised ? `這個名字喔……<span class="q">我就直說了。</span>` : R.grade === "上上" || R.grade === "上" ? `<span class="q">這名字不錯。</span>你看看。` : `<span class="q">還可以，</span>有幾個所在要注意。`);
+  speak(line);
   const view = S.view;
   if (S.justCounted) { S.justCounted = false; setTimeout(() => sfx("bell"), 120); }
   setTimeout(() => sfx("paper"), 260);
   act.innerHTML = `
-    <div class="rhead"><span class="who">${esc(R.name)}<small>${R.gender === "f" ? "坤造" : "乾造"}</small></span>
-      <span class="mode" role="group" aria-label="解讀顯示"><button type="button" data-v="both">對照</button><button type="button" data-v="pi">批語</button><button type="button" data-v="bai">白話</button></span></div>
-    ${opts.back ? `<div class="row" style="justify-content:flex-start"><button type="button" class="btn ghost" id="backCmp">回去挑名字</button></div>` : ""}
+    ${rtop(esc(R.name), gtxt(R.gender), line, `<button type="button" class="opt small rshare" id="shareTop">分享</button>`)}
+    <div class="rhead"><div class="mode" role="group" aria-label="怎麼看"><button type="button" data-v="both">都看</button><button type="button" data-v="pi">只看批語</button><button type="button" data-v="bai">只看白話</button></div></div>
     <div class="hero">
       <div class="grade">${R.grade}</div>
       <div class="score">${han(R.score)}分</div>
-      <div class="hl">${esc(R.headline)}</div>
-      <div class="hlp">${esc(R.headlinePlain)}</div>
+      <div class="hl">${clauses(R.headline + "。")}</div>
+      <div class="hlp">${prose(R.headlinePlain)}</div>
     </div>
     <div class="grid5" id="grid5">${gridTiles(R, false, true)}</div>
-    <p class="sancai">三才 ${R.sancai.key.split("").join("・")}　${R.sancai.level}</p>
-    <button type="button" class="btn ghost share-btn wide share-top" id="shareTop">這張紅紙拿去給朋友看</button>
+    <p class="sancai">三才　${R.sancai.key.split("").join("・")}　${R.sancai.level}</p>
     <article class="reading" id="readingBody" data-mode="${view}">
-      ${R.sections.map(s => `<section class="sec" id="sec-${s.key}" data-k="${s.key}"><h3>${esc(s.title)}</h3>${s.key === "bazi" ? baziBlock(R.bazi) : ""}<p class="pi">${s.pi.map(l => `<span>${esc(l)}</span>`).join("")}</p><p class="bai">${esc(s.bai)}</p>${s.reasons ? `<ul class="reasons">${s.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}</section>`).join("")}
+      ${R.sections.map(s => `<section class="sec" id="sec-${s.key}" data-k="${s.key}"><h3>${esc(s.title)}</h3>${s.key === "bazi" ? baziBlock(R.bazi) : ""}<p class="pi">${s.pi.map(l => `<span>${clauses(l)}</span>`).join("")}</p><p class="bai">${prose(s.bai)}</p>${s.reasons ? `<ul class="reasons">${s.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}</section>`).join("")}
       <section class="sec" id="sec-ai" hidden><h3>先生細說</h3><p class="bai ai-out" id="aiOut"></p></section>
     </article>
     <div class="after">
       <button type="button" class="btn ghost" id="askAI" hidden>請先生細說</button>
-      <button type="button" class="btn ghost share-btn" id="shareR">分享</button>
+      <button type="button" class="btn ghost" id="shareR">分享</button>
       <button type="button" class="btn ghost" id="again">再看一個</button>
     </div>
-    <div class="actions">
-      <button type="button" class="btn main" id="toRename">${R.renameAdvised ? "幫我挑新名字" : "看看別的名字"}</button>
-    </div>`;
+    <button type="button" class="btn main wide" id="toRename">${R.renameAdvised ? "幫我挑新名字" : "看看別的名字"}</button>`;
   const setView = v => { S.view = v; store.set("view", v); $("#readingBody").dataset.mode = v; act.querySelectorAll("[data-v]").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v)); };
   act.querySelectorAll("[data-v]").forEach(b => b.onclick = () => setView(b.dataset.v));
   setView(view);
@@ -396,7 +444,6 @@ function showReading(R, opts = {}) {
   $("#toRename").onclick = () => showRename(R);
   $("#again").onclick = () => { S.mode = "read"; S.chars = []; askName(); };
   $("#shareR").onclick = $("#shareTop").onclick = () => openShare(R);
-  if (opts.back) $("#backCmp").onclick = opts.back;
   aiAvailable().then(ok => {
     const b = $("#askAI"); if (!b) return;
     if (!ok) return;
@@ -414,82 +461,102 @@ function showReading(R, opts = {}) {
 let lastCands = [];
 async function showRename(R) {
   setPhase("rename"); pose("write");
+  setBack(R ? () => showReading(R) : seat);
   const surname = R ? [...R.surname] : currentSplit().surname;
-  const cfg = Object.assign({ length: R && R.given.length === 1 ? 1 : 2, keepPos: "", keepCh: "", exclude: "", leanFree: false }, store.get("renameCfg", {}));
+  const st = Object.assign({ length: R && R.given.length === 1 ? 1 : 2, keepPos: "", keepCh: "", exclude: "", leanFree: false }, store.get("renameCfg", {}));
   if (!R) renderPaper({ split: { surname, given: [] } });
-  speak(R ? `來，我幫你想幾個。<span class="q">姓是祖先傳的，不換，只換名。</span>` : `姓${esc(surname.join(""))}的喔，<span class="q">我挑幾個給你看看。</span>`);
+  const line = R ? `來，我幫你想幾個。<span class="q">姓是祖先傳的，不換，只換名。</span>` : `姓${esc(surname.join(""))}的喔，<span class="q">我挑幾個給你看看。</span>`;
+  speak(line);
   act.innerHTML = `
-    <div class="rhead"><span class="who">${R ? `替${esc(R.name)}擬名` : `替${esc(surname.join(""))}家的孩子取名`}</span></div>
-    <div class="asks">
-      <div class="ask-row">名字要<span class="opts"><button type="button" class="opt" data-len="2">兩個字</button><button type="button" class="opt" data-len="1">一個字</button></span></div>
-      <div class="ask-row">留一個字<input id="rKeepCh" maxlength="1" placeholder="字">放在<span class="opts"><button type="button" class="opt" data-kp="0">第一字</button><button type="button" class="opt" data-kp="1">第二字</button></span></div>
-      <div class="ask-row">不要的字<input id="rEx" class="long" placeholder="例如：美 玲"></div>
-      <div class="ask-row"><span class="opts"><button type="button" class="opt" id="rFree">用字不拘男女</button></span></div>
-      <button type="button" class="btn main wide" id="rGo">請先生挑名</button>
+    ${rtop(R ? `替${esc(R.name)}擬名` : `替${esc(surname.join(""))}家的孩子取名`, "", line)}
+    <div class="cond f-slip"><p class="cond-sum" id="condSum"></p><button type="button" class="opt small" id="condBtn" aria-expanded="false">改條件</button></div>
+    <div class="cond-body f-slip" id="condBody" hidden>
+      <p class="cond-row">名字取<span class="opts"><button type="button" class="opt" data-len="2">兩個字</button><button type="button" class="opt" data-len="1">一個字</button></span></p>
+      <p class="cond-row">要留的字<input id="rKeepCh" maxlength="1" placeholder="沒有" aria-label="要留的字">放<span class="opts"><button type="button" class="opt" data-kp="0">頭一個</button><button type="button" class="opt" data-kp="1">後一個</button></span></p>
+      <p class="cond-row">不要用的字<input id="rEx" class="long" placeholder="例如：美、玲" aria-label="不要用的字"></p>
+      <p class="cond-row"><span class="opts"><button type="button" class="opt" id="rFree">男女的字都可以用</button></span></p>
+      <button type="button" class="btn main wide" id="rGo">照這樣再挑</button>
     </div>
-    <div id="slips" class="slips"></div>
-    <div class="asks"><label class="ask-row" for="ownIn">自己有想好的名字？</label>
-      <div class="ask-row"><input id="ownIn" class="long" placeholder="例如：宥廷 承恩" style="flex:1"><button type="button" class="btn ghost" id="ownGo">一起批</button></div></div>
-    <div class="row"><button type="button" class="btn ghost" id="rBack">${R ? "回到批命" : "從頭來"}</button></div>`;
-  const st = { ...cfg };
+    <div id="slips" class="sticks"></div>
+    <div class="own f-slip"><label for="ownIn">自己想好的名字也寫來，我一起看</label>
+      <div class="own-row"><input id="ownIn" class="long" placeholder="只寫名，像「宥廷」"><button type="button" class="opt" id="ownGo">一起看</button></div></div>`;
   const sync = () => {
     act.querySelectorAll("[data-len]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.len === st.length));
     act.querySelectorAll("[data-kp]").forEach(b => { b.setAttribute("aria-pressed", b.dataset.kp === String(st.keepPos)); b.disabled = st.length === 1 && b.dataset.kp === "1"; });
     $("#rFree").setAttribute("aria-pressed", st.leanFree);
+    const g = S.gender === "f" ? "女" : "男";
+    $("#condSum").textContent = [st.length === 1 ? "取一個字" : "取兩個字", st.leanFree ? "男女都可以" : `照${g}生的字`, st.keepCh ? `留「${st.keepCh}」` : "不留字", st.exclude.trim() ? `不用「${st.exclude.replace(/[^\p{Script=Han}]/gu, "")}」` : ""].filter(Boolean).join("・");
   };
   act.querySelectorAll("[data-len]").forEach(b => b.onclick = () => { st.length = +b.dataset.len; if (st.length === 1 && st.keepPos === "1") st.keepPos = ""; sync(); });
   act.querySelectorAll("[data-kp]").forEach(b => b.onclick = () => { st.keepPos = st.keepPos === b.dataset.kp ? "" : b.dataset.kp; sync(); });
   $("#rFree").onclick = () => { st.leanFree = !st.leanFree; sync(); };
+  $("#condBtn").onclick = () => { const body = $("#condBody"); body.hidden = !body.hidden; $("#condBtn").setAttribute("aria-expanded", !body.hidden); $("#condBtn").textContent = body.hidden ? "改條件" : "收起來"; if (!body.hidden) body.scrollIntoView({ behavior: "smooth", block: "nearest" }); };
   $("#rKeepCh").value = st.keepCh; $("#rEx").value = st.exclude; sync();
-  $("#rBack").onclick = () => R ? showReading(R) : seat();
   const run = async () => {
     const box = $("#slips");
-    box.innerHTML = `<p class="fine">我翻一下字典……</p>`;
+    box.innerHTML = `<p class="fine ink">我翻一下字典……</p>`;
     await Promise.all([initNames(load), initGivenNames(load)]);
     st.keepCh = [...$("#rKeepCh").value.replace(/[^\p{Script=Han}]/gu, "")].map(x => tradOptions(x)[0])[0] || "";
     st.exclude = $("#rEx").value;
     store.set("renameCfg", st);
     if (st.keepCh && st.keepPos === "") st.keepPos = "0";
-    if (st.keepPos !== "" && !st.keepCh) { box.innerHTML = `<p class="fine">你要留哪個字，先寫在「留一個字」那格。</p>`; return; }
+    sync();
+    if (st.keepPos !== "" && !st.keepCh) { box.innerHTML = `<p class="fine ink">你要留哪個字，先寫在「要留的字」那格。</p>`; return; }
     const ex = new Set([...st.exclude.replace(/[^\p{Script=Han}]/gu, "")].map(x => tradOptions(x)[0]));
     if (R) [...R.given].forEach(ch => { if (ch !== st.keepCh) ex.add(ch); });
-    lastCands = suggestNames({ surname, gender: S.gender, bazi: S.bazi, length: st.length, keep: st.keepPos !== "" ? { pos: +st.keepPos, ch: st.keepCh } : null, exclude: ex, leanFree: st.leanFree, count: 6 });
-    renderSlips(R, surname);
-    sync();
+    lastCands = [...lastCands.filter(x => x.own), ...suggestNames({ surname, gender: S.gender, bazi: S.bazi, length: st.length, keep: st.keepPos !== "" ? { pos: +st.keepPos, ch: st.keepCh } : null, exclude: ex, leanFree: st.leanFree, count: 8 })];
+    renderSticks(R, surname);
   };
-  $("#rGo").onclick = run;
+  $("#rGo").onclick = () => { $("#condBody").hidden = true; $("#condBtn").textContent = "改條件"; run(); };
   $("#ownGo").onclick = async () => {
     await ready; await initNames(load);
     const names = $("#ownIn").value.split(/[\s,，、]+/).map(n => [...n.replace(/[^\p{Script=Han}]/gu, "")].map(x => tradOptions(x)[0])).filter(a => a.length >= 1 && a.length <= 3 && a.every(ch => kangxi(ch) !== null));
     if (!names.length) { toast("姓不用寫，只寫名就好，像「宥廷」"); return; }
-    const own = names.map(g => { const ev = evaluate({ surname, given: g, gender: S.gender, bazi: S.bazi }); return { name: surname.join("") + g.join(""), given: g.join(""), score: ev.score, grade: ev.grade, own: true, short: `人格${ev.wuge.ren.n}・總格${ev.wuge.zong.n}・三才${ev.sancai.level}`, reason: `人格${ev.wuge.ren.n}畫是${ev.wuge.ren.level}，總格${ev.wuge.zong.n}畫是${ev.wuge.zong.level}，三才${ev.sancai.level}。` }; });
+    const own = names.map(g => { const ev = evaluate({ surname, given: g, gender: S.gender, bazi: S.bazi }); return { name: surname.join("") + g.join(""), given: g.join(""), score: ev.score, grade: ev.grade, own: true, reason: `人格${ev.wuge.ren.n}畫是${ev.wuge.ren.level}，總格${ev.wuge.zong.n}畫是${ev.wuge.zong.level}，三才${ev.sancai.level}。` }; });
     lastCands = [...own, ...lastCands.filter(x => !x.own)];
-    renderSlips(R, surname);
+    $("#ownIn").value = "";
+    renderSticks(R, surname);
+    $("#slips").scrollIntoView({ behavior: "smooth", block: "start" });
   };
+  lastCands = [];
   run();
 }
-function renderSlips(R, surname) {
+// 候選名：一支支竹籤，籤頭寫評等，籤身直寫名字，籤腳寫分數；自己帶來的名字用宣紙條
+function renderSticks(R, surname) {
   const box = $("#slips");
-  if (!lastCands.length) { box.innerHTML = `<p class="fine">你這樣限，我翻不到筆畫、五行都合的。要留的字換一個，不要的字少寫幾個，再叫我挑。</p>`; return; }
-  box.innerHTML = lastCands.map((c, i) => `<button type="button" class="slip" data-i="${i}" style="--i:${i}"><b>${esc(c.name)}</b><span class="g2">${c.grade}・${han(c.score)}分${c.own ? "・你帶來的" : ""}</span><small>${esc(c.meaning || "")}</small><small class="k2">${esc(c.short || c.reason)}</small></button>`).join("");
-  box.querySelectorAll(".slip").forEach(b => b.onclick = () => { sfx("paper"); showCompare(R, surname, lastCands[+b.dataset.i]); });
+  if (!lastCands.length) { box.innerHTML = `<p class="fine ink">你這樣限，我翻不到筆畫、五行都合的。要留的字換一個，不要的字少寫幾個，再叫我挑。</p>`; return; }
+  const best = lastCands.filter(c => !c.own).reduce((a, c) => (!a || c.score > a.score ? c : a), null);
+  box.innerHTML = lastCands.map((c, i) => `<button type="button" class="stick${c.own ? " own" : ""}${c === best ? " top" : ""}" data-i="${i}" style="--i:${i}" aria-label="${esc(c.name)}，${c.grade}，${c.score}分${c.own ? "，你帶來的" : ""}">
+      <span class="sk-g">${c.grade}</span><span class="sk-n vt">${esc(c.given)}</span><span class="sk-s">${c.own ? "你的" : han(c.score) + "分"}</span></button>`).join("")
+    + `<p class="sticks-tip">點一支籤，跟${R ? "原來的名字比比看" : "看整張批命"}</p>`;
+  box.querySelectorAll(".stick").forEach(b => b.onclick = () => { sfx("paper"); showCompare(R, surname, lastCands[+b.dataset.i]); });
   if (!reduced) lastCands.forEach((_, i) => setTimeout(() => sfx("deal"), 120 + i * 90));
 }
 function showCompare(R, surname, cand) {
   const N = reading({ surname, given: [...cand.given], gender: S.gender, topic: S.topic, bazi: S.bazi });
   const back = () => showRename(R);
   if (!R) { showReading(N, { back }); return; }
-  setPhase("compare"); pose("speak");
+  setPhase("compare"); pose("speak"); setBack(back);
   renderPaper({ split: { surname, given: [...cand.given] } });
-  speak(`<span class="q">${esc(R.name)}</span>跟<span class="q">${esc(N.name)}</span>擺做伙看，差在哪裡一看就知。`);
-  const rows = [["評等", R.grade, N.grade], ["分數", R.score, N.score], ...["ren", "di", "zong", "wai"].map(k => [GRID_INFO[k].label, `${R.wuge[k].n}・${R.wuge[k].el}・${R.wuge[k].level}`, `${N.wuge[k].n}・${N.wuge[k].el}・${N.wuge[k].level}`]), ["三才", `${R.sancai.key} ${R.sancai.level}`, `${N.sancai.key} ${N.sancai.level}`]];
-  if (R.match) rows.push(["人格配八字", R.match.grids[0].tag, N.match.grids[0].tag]);
-  act.innerHTML = `<div class="rhead"><span class="who">兩名對照</span></div>
-    <div class="reading cmp-paper"><table class="cmp"><thead><tr><th></th><th>${esc(R.name)}</th><th>${esc(N.name)}</th></tr></thead><tbody>${rows.map(r => `<tr><td>${r[0]}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join("")}</tbody></table>
-    <section class="sec"><p class="pi"><span>${esc(N.headline)}。</span></p><p class="bai">${esc(N.headlinePlain)}${esc(cand.reason)}</p></section></div>
-    <div class="row"><button type="button" class="btn ghost" id="cBack">回去挑名字</button><button type="button" class="btn main" id="cFull">看整張批命</button></div>`;
-  $("#cBack").onclick = back;
-  $("#cFull").onclick = () => showReading(N, { back });
+  const better = N.score >= R.score;
+  const line = better ? `<span class="q">${esc(N.name)}</span>比原來的好，差在哪裡，你看。` : `<span class="q">${esc(N.name)}</span>沒有比較好，你看就知道。`;
+  speak(line);
+  const TAG = { 用神: 3, 喜神: 2, 閒神: 1, 忌神: 0 };
+  const rows = [
+    ...["ren", "di", "zong", "wai"].map(k => [GRID_INFO[k].label, cellOf(R.wuge[k]), cellOf(N.wuge[k]), R.wuge[k].lv, N.wuge[k].lv]),
+    ["三才", `${esc(R.sancai.key)}<br>${R.sancai.level}`, `${esc(N.sancai.key)}<br>${N.sancai.level}`, R.sancai.v, N.sancai.v],
+  ];
+  if (R.match) rows.push(["配八字", R.match.grids[0].tag, N.match.grids[0].tag, TAG[R.match.grids[0].tag], TAG[N.match.grids[0].tag]]);
+  const win = (a, b) => a > b ? "win" : "";
+  act.innerHTML = `${rtop("兩個名字比一比", "", line)}
+    <div class="vs">
+      <div class="vs-card${win(R.score, N.score) ? " win" : ""}"><span class="vs-tag">原名</span><p class="vs-n">${esc(R.name)}</p><p class="vs-g">${R.grade}</p><p class="vs-s">${han(R.score)}分</p></div>
+      <div class="vs-card${win(N.score, R.score) ? " win" : ""}"><span class="vs-tag">新名</span><p class="vs-n">${esc(N.name)}</p><p class="vs-g">${N.grade}</p><p class="vs-s">${han(N.score)}分</p></div>
+    </div>
+    <div class="reading cmp-paper"><table class="cmp"><tbody>${rows.map(r => `<tr><th scope="row">${r[0]}</th><td class="${win(r[3], r[4])}">${r[1]}</td><td class="${win(r[4], r[3])}">${r[2]}</td></tr>`).join("")}</tbody></table>
+    <section class="sec"><p class="pi"><span>${clauses(N.headline + "。")}</span></p><p class="bai">${prose(N.headlinePlain)}${prose(cand.reason || "")}</p></section></div>
+    <button type="button" class="btn main wide" id="cFull">看${esc(N.name)}的整張批命</button>`;
+  $("#cFull").onclick = () => showReading(N, { back: () => showCompare(R, surname, cand) });
 }
 function doNaming() { S.topic = "all"; showRename(null); }
 
@@ -499,30 +566,32 @@ async function copy(txt, ok) {
   catch (_) { toast("這裡不給抄，長按文字複製"); }
 }
 function fullText(R) {
-  return [`問名堂批命：${R.name}（${R.gender === "f" ? "坤造" : "乾造"}）`, `評等：${R.grade}（${R.score}分）　${R.headline}`, R.headlinePlain,
+  return [`問名堂批命：${R.name}（${gtxt(R.gender)}）`, `評等：${R.grade}（${R.score}分）　${R.headline}`, R.headlinePlain,
     ...R.sections.map(s => `【${s.title}】\n批：${s.pi.join("")}\n白話：${s.bai}`), "", "也去給先生看看你的名字：" + shareLink(R)].join("\n");
 }
+const ICON = {
+  line: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.5 3 2 6.6 2 11c0 3.9 3.5 7.2 8.3 7.9.3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.6 1.1-.5 6-3.5 8.1-6C21.4 14.4 22 12.8 22 11c0-4.4-4.5-8-10-8Zm-3.6 10.4H6.4a.5.5 0 0 1-.5-.5V8.9a.5.5 0 0 1 1 0v3.5h1.5a.5.5 0 0 1 0 1Zm2 -.5a.5.5 0 0 1-1 0V8.9a.5.5 0 0 1 1 0v4Zm4.6 0a.5.5 0 0 1-.9.3l-2-2.8v2.5a.5.5 0 0 1-1 0V8.9a.5.5 0 0 1 .9-.3l2 2.8V8.9a.5.5 0 0 1 1 0v4Zm3.2-2.5a.5.5 0 0 1 0 1h-1.5v1h1.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5V8.9c0-.3.2-.5.5-.5h2a.5.5 0 0 1 0 1h-1.5v1h1.5Z"/></svg>`,
+  fb: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.3v7A10 10 0 0 0 22 12Z"/></svg>`,
+  th: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.7 11.2c-.1 0-.2-.1-.3-.1-.2-3.2-2-5-4.9-5-1.8 0-3.2.8-4.1 2.1l1.6 1.1c.7-1 1.7-1.2 2.5-1.2 1 0 1.8.3 2.2.9.4.4.6 1 .7 1.7-.8-.1-1.7-.2-2.6-.1-2.6.1-4.3 1.7-4.2 3.8.1 1.1.6 2 1.5 2.6.8.5 1.8.8 2.8.7 1.4-.1 2.5-.6 3.2-1.6.6-.7.9-1.7 1-2.9.7.4 1.2.9 1.5 1.5.5 1.1.5 2.8-.9 4.2-1.2 1.2-2.7 1.8-4.9 1.8-2.5 0-4.4-.8-5.6-2.4-1.1-1.5-1.7-3.6-1.8-6.3.1-2.7.7-4.8 1.8-6.3C7.4 4.4 9.3 3.6 11.8 3.6c2.5 0 4.4.8 5.7 2.4.6.8 1.1 1.8 1.4 2.9l1.9-.5c-.4-1.4-1-2.6-1.8-3.6C17.4 2.7 15 1.7 11.8 1.7S6.2 2.7 4.6 4.7C3.2 6.5 2.5 9 2.4 12c.1 3 .8 5.5 2.2 7.3 1.6 2 4 3 7.2 3 2.8 0 4.8-.7 6.4-2.3 2.1-2.1 2-4.7 1.3-6.3-.5-1.1-1.4-2-2.8-2.5Zm-4.9 4.6c-1.1.1-2.3-.4-2.3-1.5-.1-.8.6-1.7 2.4-1.8h.6c.7 0 1.3.1 1.9.2-.2 2.4-1.4 3-2.6 3.1Z"/></svg>`,
+};
 async function openShare(R) {
   sfx("paper");
   const link = shareLink(R), text = shareText(R), enc = encodeURIComponent;
   const box = document.createElement("div");
   box.className = "share";
   box.innerHTML = `<div class="share-in f-slip" role="dialog" aria-modal="true" aria-labelledby="shH">
+      <button type="button" class="share-x" id="shClose" aria-label="收起來">收</button>
       <p class="share-h" id="shH">這張紅紙，拿去給朋友看</p>
       <div class="share-pic" id="shPic"><span>紅紙正在寫……</span></div>
-      <button type="button" class="btn main wide" id="shNative" hidden>分享這張紅紙</button>
-      <div class="share-grid g4">
-        <a class="btn ghost" href="https://social-plugins.line.me/lineit/share?url=${enc(link)}&text=${enc(text)}" target="_blank" rel="noopener">LINE</a>
-        <a class="btn ghost" href="https://www.facebook.com/sharer/sharer.php?u=${enc(link)}" target="_blank" rel="noopener">臉書</a>
-        <a class="btn ghost" href="https://www.threads.com/intent/post?text=${enc(text)}&url=${enc(link)}" target="_blank" rel="noopener">Threads</a>
-        <button type="button" class="btn ghost" id="shLink">複製連結</button>
+      <button type="button" class="btn main wide" id="shMain"></button>
+      <div class="share-icons">
+        <a class="sicon" href="https://social-plugins.line.me/lineit/share?url=${enc(link)}&text=${enc(text)}" target="_blank" rel="noopener">${ICON.line}<span>LINE</span></a>
+        <a class="sicon" href="https://www.facebook.com/sharer/sharer.php?u=${enc(link)}" target="_blank" rel="noopener">${ICON.fb}<span>臉書</span></a>
+        <a class="sicon" href="https://www.threads.com/intent/post?text=${enc(text)}&url=${enc(link)}" target="_blank" rel="noopener">${ICON.th}<span>Threads</span></a>
+        <button type="button" class="sicon" id="shLink"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.6 13.4a1 1 0 0 1 0-1.4l3.5-3.5a1 1 0 1 1 1.4 1.4L12 13.4a1 1 0 0 1-1.4 0Zm-2.8 5.3a4 4 0 0 1-2.8-6.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a2 2 0 0 0 2.8 2.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a4 4 0 0 1-2.8 1.2Zm8.5-5.7a1 1 0 0 1-.7-1.7l2.1-2.1a2 2 0 0 0-2.8-2.8l-2.1 2.1a1 1 0 1 1-1.4-1.4l2.1-2.1a4 4 0 0 1 5.6 5.6l-2.1 2.1a1 1 0 0 1-.7.3Z"/></svg><span>複製連結</span></button>
       </div>
-      <div class="share-grid g2" ${noDownload ? "hidden" : ""}>
-        <button type="button" class="btn ghost" id="shSave">存圖片</button>
-        <button type="button" class="btn ghost" id="shStory">存限動圖</button>
-      </div>
-      <p class="share-note">${noDownload ? "這裡不能直接下載，<b>長按上面的圖</b>就能存起來，再貼到 IG 限動。" : "圖片跟連結都不會帶你的生日。要發 IG 限動，先存「限動圖」再到 IG 發。"}</p>
-      <div class="row"><button type="button" class="btn ghost" id="shText">抄全文</button><button type="button" class="btn ghost" id="shClose">收起來</button></div>
+      <p class="share-note">${noDownload ? "這裡不能直接下載，<b>長按上面的圖</b>就能存起來，再拿去 IG 限動。" : "圖片跟連結都不會帶你的生日。"}</p>
+      <div class="share-more">${noDownload ? "" : `<button type="button" class="opt small" id="shStory">存 IG 限動圖</button>`}<button type="button" class="opt small" id="shText">抄整張批命</button></div>
     </div>`;
   document.body.append(box);
   requestAnimationFrame(() => box.classList.add("on"));
@@ -535,57 +604,55 @@ async function openShare(R) {
   box.querySelector("#shText").onclick = () => copy(fullText(R), "整張批命抄好了");
   let file = null, url = null;
   const fname = `問名堂_${R.name}.png`;
+  const save = (u, name) => { const a = document.createElement("a"); a.href = u; a.download = name; document.body.append(a); a.click(); a.remove(); toast("圖片存好了"); };
+  const main = box.querySelector("#shMain");
+  const canShareNative = navigator.share && !framed;
+  main.textContent = canShareNative ? "分享這張紅紙" : noDownload ? "複製連結" : "存下這張紅紙";
+  main.onclick = noDownload && !canShareNative ? () => copy(link, "連結抄好了，貼給朋友就好") : () => {};
   try {
     const blob = await cardBlob(await drawCard(R));
     file = new File([blob], fname, { type: "image/png" });
     url = URL.createObjectURL(blob);
     box.querySelector("#shPic").innerHTML = `<img src="${url}" alt="${esc(R.name)}的批命紅紙：${R.grade}，${esc(R.headline)}">`;
   } catch (_) { box.querySelector("#shPic").innerHTML = `<span>紅紙沒寫成，用下面的連結分享也一樣。</span>`; }
-  const save = (u, name) => { const a = document.createElement("a"); a.href = u; a.download = name; document.body.append(a); a.click(); a.remove(); toast("圖片存好了"); };
-  box.querySelector("#shSave").onclick = () => { if (url) save(url, fname); };
-  box.querySelector("#shStory").onclick = async () => {
+  if (canShareNative) {
+    const data = file && navigator.canShare && navigator.canShare({ files: [file] }) ? { files: [file], text: text + "\n" + link } : { title: "問名堂", text, url: link };
+    main.onclick = async () => { try { await navigator.share(data); } catch (_) {} };
+  } else if (!noDownload) main.onclick = () => { if (url) save(url, fname); };
+  box.querySelector("#shStory")?.addEventListener("click", async () => {
     try { save(URL.createObjectURL(await cardBlob(await drawCard(R, true))), `問名堂_${R.name}_限動.png`); } catch (_) { toast("限動圖沒畫成，再按一次"); }
-  };
-  const nb = box.querySelector("#shNative");
-  const data = file && navigator.canShare && navigator.canShare({ files: [file] }) ? { files: [file], text: text + "\n" + link } : { title: "問名堂", text, url: link };
-  if (navigator.share && !framed) {
-    nb.hidden = false;
-    nb.onclick = async () => { try { await navigator.share(data); } catch (_) {} };
-  }
+  });
 }
 
-// 朋友傳來的連結：?n=名字&g=m|f&s=姓氏字數&gr=評等&sc=分數&t=所問&b=1（原批有配八字）
+// 朋友傳來的連結：#n=名字&g=m|f&s=姓氏字數&t=所問&b=1（原批有配八字）
+// 朋友這邊沒有生日，一律照名字筆畫重算，畫面上的評等、分數和點進去看到的一定一致
 function incoming() {
   const q = new URLSearchParams(location.hash.length > 1 ? location.hash.slice(1) : location.search);
   const n = [...(q.get("n") || "")].filter(c => /\p{Script=Han}/u.test(c));
   if (n.length < 2 || n.length > 5) return null;
   const g = q.get("g") === "f" ? "f" : "m";
-  const gr = ["上上", "上", "中", "中下", "下"].includes(q.get("gr")) ? q.get("gr") : null;
-  const sc = Math.max(0, Math.min(100, parseInt(q.get("sc"), 10) || 0)) || null;
   const t = TOPICS.some(x => x[0] === q.get("t")) ? q.get("t") : "all";
   const sl = q.get("s") === "2" ? 2 : 1;
-  return { chars: n, name: n.join(""), g, gr, sc, t, sl, bazi: q.get("b") === "1" };
+  return { chars: n, name: n.join(""), g, t, sl, bazi: q.get("b") === "1" };
 }
 const friend = incoming();
-function showFriend(x) {
-  setPhase("seat"); pose("speak");
-  S.chars = [...x.chars]; S.surnameLen = x.sl; renderPaper(); $("#seal").classList.add("on");
+async function showFriend(x) {
+  await ready;
+  setPhase("seat"); pose("speak"); setBack(null);
+  S.mode = "read"; S.chars = [...x.chars]; S.surnameLen = x.sl; S.gender = x.g; S.topic = x.t; S.birth = null; S.bazi = null;
+  const sp = currentSplit();
+  const R0 = reading({ surname: sp.surname, given: sp.given, gender: x.g, topic: x.t, bazi: null });
+  renderPaper(); $("#seal").classList.add("on");
   speak(`剛剛有人拿「${esc(x.name)}」來給我看。<span class="q">換你了，坐。</span>`);
   act.innerHTML = `<div class="hero friend">
-      <div class="score">${esc(x.name)}・${x.g === "f" ? "坤造" : "乾造"}</div>
-      ${x.gr ? `<div class="grade">${x.gr}</div>` : ""}${x.sc ? `<div class="score">${han(x.sc)}分</div>` : ""}
-      <div class="hlp">這是你朋友給先生看過的名字。換你的名字，看批得怎樣。</div>
+      <div class="score">${esc(x.name)}・${gtxt(x.g)}</div>
+      <div class="grade">${R0.grade}</div><div class="score">${han(R0.score)}分</div>
+      <div class="hlp">${x.bazi ? "他那張有配八字，這裡只照筆畫看。" : "這是你朋友給先生看過的名字。"}</div>
+      <button type="button" class="opt small" id="seeFriend">看他這張怎麼批</button>
     </div>
-    <button type="button" class="prop red seat-main" data-m="read"><span class="in"><span class="t">換我看名字</span><span class="s">寫下你的名字，先生算給你看</span></span></button>
-    <div class="seat-sub"><button type="button" class="opt" id="seeFriend">看${esc(x.name)}的筆畫</button><button type="button" class="opt" data-m="name">幫小孩取名</button></div>`;
+    <button type="button" class="prop red seat-main" data-m="read"><span class="in"><span class="t">換我看名字</span><span class="s">寫下你的名字，先生算給你看</span></span></button>`;
   act.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { S.mode = b.dataset.m; S.chars = []; S.surnameLen = null; askName(); });
-  $("#seeFriend").onclick = async () => {
-    await ready;
-    S.mode = "read"; S.gender = x.g; S.topic = x.t; S.birth = null; S.bazi = null;
-    const sp = currentSplit();
-    showReading(reading({ surname: sp.surname, given: sp.given, gender: x.g, topic: x.t, bazi: null }));
-    if (x.bazi) speak(`他那張有配八字，<span class="q">我這裡只看名字，</span>批出來會不太一樣。`);
-  };
+  $("#seeFriend").onclick = () => showReading(R0, { back: () => showFriend(x), say: x.bazi ? `他那張有配八字，<span class="q">我這裡只看名字。</span>` : null });
   history.replaceState(null, "", location.pathname);
 }
 
@@ -594,31 +661,31 @@ function refreshHistory() {
   const h = store.get("history", []), btn = $("#historyBtn");
   btn.hidden = !h.length;
   btn.onclick = () => {
-    setPhase("seat");
+    setPhase("seat"); pose("speak"); setBack(seat);
+    S.chars = []; renderPaper();
     speak(`之前看過的，都在這。`);
-    const day = t => { const d = new Date(t); return `${d.getMonth() + 1}月${d.getDate()}日看的`; };
-    act.innerHTML = `<div class="slips hist">${h.map((x, i) => `<button type="button" class="slip" data-i="${i}" style="--i:${i}"><b>${esc(x.name)}</b><span class="g2">${x.grade}</span><small>${x.t ? day(x.t) : ""}</small></button>`).join("")}</div><div class="row"><button type="button" class="btn ghost" id="hBack">回去</button></div>`;
-    $("#hBack").onclick = seat;
+    const day = t => { const d = new Date(t); return `${d.getMonth() + 1}月${d.getDate()}日`; };
+    act.innerHTML = `<div class="hist">${h.map((x, i) => `<button type="button" class="hist-row f-slip" data-i="${i}" style="--i:${i}"><b>${esc(x.name)}</b><span class="hg">${x.grade}</span><small>${gtxt(x.gender)}${x.birth ? "・有配八字" : ""}${x.t ? "・" + day(x.t) : ""}</small></button>`).join("")}</div>`;
     act.querySelectorAll("[data-i]").forEach(b => b.onclick = async () => {
       const x = h[+b.dataset.i];
       await ready;
       S.mode = "read"; S.chars = [...x.name]; S.surnameLen = x.surnameLen; S.gender = x.gender; S.topic = x.topic || "all"; S.birth = x.birth; S.bazi = null;
       if (x.birth) { await loadLunar(); S.bazi = computeBazi({ ...x.birth, place: PLACES.find(p => p[0] === x.birth.place) }, L); }
       const sp = currentSplit();
-      showReading(reading({ surname: sp.surname, given: sp.given, gender: S.gender, topic: S.topic, bazi: S.bazi }));
+      showReading(reading({ surname: sp.surname, given: sp.given, gender: S.gender, topic: S.topic, bazi: S.bazi }), { back: () => btn.onclick() });
     });
   };
 }
 
 // ───────── 聲音、特效 ─────────
 const soundBtn = $("#soundBtn");
-const syncSound = () => { const v = soundOn(); soundBtn.setAttribute("aria-pressed", v); soundBtn.textContent = v ? "有聲" : "靜音"; };
+const syncSound = () => { const v = soundOn(); soundBtn.setAttribute("aria-pressed", v); soundBtn.textContent = v ? "聲音・開" : "聲音・關"; };
 soundBtn.onclick = () => { setSound(!soundOn()); syncSound(); if (soundOn()) setTimeout(() => sfx("tap"), 60); };
 syncSound();
 // 一般按鈕都有木頭輕叩聲；木牌、招牌、紅紙另有專屬聲音
 document.addEventListener("click", e => {
   const b = e.target.closest("button");
-  if (!b || b.disabled || b.matches(".tk, .sign, .slip, #soundBtn")) return;
+  if (!b || b.disabled || b.matches(".tk, .sign, .stick, #soundBtn")) return;
   sfx("tap");
 }, true);
 particles($("#fx"), () => app.dataset.orient);
@@ -627,7 +694,7 @@ riseOnChange(act);
 // ───────── 開場：等字典、廟埕、老師傅都載好，按「入座」才進場（同時解鎖聲音） ─────────
 const introBar = $("#introBar"), enterBtn = $("#enter");
 const loadImg = src => new Promise(r => { const i = new Image(); i.onload = i.onerror = r; i.src = src; });
-const jobs = [ready, loadImg(innerWidth >= 900 && innerWidth / innerHeight > 1.05 ? "assets/scene/bg-wide.webp" : "assets/scene/bg.webp"), loadImg("assets/master/idle.webp"), loadImg("assets/props/table.webp"), loadImg("assets/ui/wood.webp"), document.fonts?.load("700 20px 'WM Kai'", "問名堂入座") || 0];
+const jobs = [ready, loadImg(innerWidth >= 900 && innerWidth / innerHeight > 1.05 ? "assets/scene/bg-wide.webp" : "assets/scene/bg.webp"), loadImg("assets/master/speak.webp"), loadImg("assets/props/table.webp"), loadImg("assets/ui/wood.webp"), document.fonts?.load("700 20px 'WM Kai'", "問名堂入座") || 0];
 let doneN = 0;
 jobs.forEach(j => Promise.resolve(j).then(() => { doneN++; introBar.style.width = Math.round(doneN / jobs.length * 100) + "%"; }, () => {}));
 Promise.all(jobs).then(() => { enterBtn.disabled = false; $("#introLoad").classList.add("done"); }).catch(() => { $(".intro-line").textContent = "字典沒翻開，重新整理一下再來。"; });
