@@ -13,7 +13,7 @@ import { aiAvailable, aiAsk, askLeft, LIMITS, aiReadingFull, readingsLeft, readi
 import { READING_TAGS } from "./ai-prompt.js";
 import { sfx, soundOn, setSound } from "./sfx.js";
 import { particles, crossfade, typeHTML, riseOnChange, pulse, reduced } from "./fx.js";
-import { drawCard, drawLongCard, cardBlob, shareLink, shareText, noDownload, framed, keyLines, summaryLine } from "./share.js";
+import { drawCard, drawLongCard, drawOgCard, uploadCard, cardBlob, shareLink, shareText, noDownload, framed, keyLines, summaryLine } from "./share.js";
 {
 const $ = s => document.querySelector(s);
 const app = $("#app"), say = $("#say"), act = $("#act"), sheet = $("#sheet"), paper = $("#paper"), paperText = $("#paperText"), canvas = $("#canvas"), viewport = $("#viewport");
@@ -731,22 +731,24 @@ const ICON = {
 };
 async function openShare(R) {
   sfx("paper");
-  const link = shareLink(R), text = shareText(R), enc = encodeURIComponent;
+  const text = shareText(R), enc = encodeURIComponent;
+  let link = shareLink(R), ready = false;
   const box = document.createElement("div");
   box.className = "share";
   box.innerHTML = `<div class="share-in f-slip" role="dialog" aria-modal="true" aria-labelledby="shH">
       <button type="button" class="share-x" id="shClose" aria-label="收起來">收</button>
-      <p class="share-h" id="shH">這張明信片，寄給朋友看</p>
-      <div class="share-pic" id="shPic"><span>紅紙正在寫……</span></div>
-      <button type="button" class="btn main wide" id="shMain"></button>
+      <p class="share-h" id="shH">這張批命，傳給朋友</p>
+      <div class="share-pic og" id="shPic"><span>紅紙正在寫……</span></div>
+      <p class="pic-tip" id="shTip">傳出去的連結會帶著這張批命卡</p>
+      <button type="button" class="btn main wide" id="shMain" disabled>批命卡準備中……</button>
       <div class="share-icons">
-        <a class="sicon" href="https://social-plugins.line.me/lineit/share?url=${enc(link)}&text=${enc(text)}" target="_blank" rel="noopener">${ICON.line}<span>LINE</span></a>
-        <a class="sicon" href="https://www.facebook.com/sharer/sharer.php?u=${enc(link)}" target="_blank" rel="noopener">${ICON.fb}<span>臉書</span></a>
-        <a class="sicon" href="https://www.threads.com/intent/post?text=${enc(text)}&url=${enc(link)}" target="_blank" rel="noopener">${ICON.th}<span>Threads</span></a>
+        <a class="sicon" id="toLine" target="_blank" rel="noopener">${ICON.line}<span>LINE</span></a>
+        <a class="sicon" id="toFb" target="_blank" rel="noopener">${ICON.fb}<span>臉書</span></a>
+        <a class="sicon" id="toTh" target="_blank" rel="noopener">${ICON.th}<span>Threads</span></a>
         <button type="button" class="sicon" id="shLink"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.6 13.4a1 1 0 0 1 0-1.4l3.5-3.5a1 1 0 1 1 1.4 1.4L12 13.4a1 1 0 0 1-1.4 0Zm-2.8 5.3a4 4 0 0 1-2.8-6.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a2 2 0 0 0 2.8 2.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a4 4 0 0 1-2.8 1.2Zm8.5-5.7a1 1 0 0 1-.7-1.7l2.1-2.1a2 2 0 0 0-2.8-2.8l-2.1 2.1a1 1 0 1 1-1.4-1.4l2.1-2.1a4 4 0 0 1 5.6 5.6l-2.1 2.1a1 1 0 0 1-.7.3Z"/></svg><span>複製連結</span></button>
       </div>
-      <p class="share-note">${noDownload ? "這裡不能直接下載，<b>長按上面的圖</b>存起來，再按上面的按鈕複製連結，一起貼給朋友。" : "圖片和連結一起給朋友，朋友點連結就能看自己的名字。都不會帶你的生日。"}</p>
-      <div class="share-more">${noDownload ? "" : `<button type="button" class="opt small" id="shStory">存 IG 限動圖</button>`}<button type="button" class="opt small" id="shText">抄整張批命</button></div>
+      <p class="share-note">朋友在 LINE、臉書看到的就是上面這張卡，點進來就能看自己的名字。不帶你的生日；批命卡在問名堂留 30 天。</p>
+      <div class="share-more"><button type="button" class="opt small" id="shLong">${noDownload ? "看整張長圖" : "存整張長圖"}</button>${noDownload ? "" : `<button type="button" class="opt small" id="shStory">存 IG 限動圖</button>`}<button type="button" class="opt small" id="shText">抄整張批命</button></div>
     </div>`;
   document.body.append(box);
   requestAnimationFrame(() => box.classList.add("on"));
@@ -755,34 +757,51 @@ async function openShare(R) {
   addEventListener("keydown", onKey);
   box.onclick = e => { if (e.target === box) close(); };
   box.querySelector("#shClose").onclick = close;
-  box.querySelector("#shLink").onclick = () => copy(link, "連結抄好了，貼給朋友就好");
+  const msg = () => text + "\n" + link;
+  const setLinks = () => {
+    box.querySelector("#toLine").href = `https://social-plugins.line.me/lineit/share?url=${enc(link)}&text=${enc(text)}`;
+    box.querySelector("#toFb").href = `https://www.facebook.com/sharer/sharer.php?u=${enc(link)}`;
+    box.querySelector("#toTh").href = `https://www.threads.com/intent/post?text=${enc(text)}&url=${enc(link)}`;
+  };
+  setLinks();
+  // 批命卡還沒存好之前，按 LINE、臉書先擋一下，免得傳出去的是沒有圖的連結
+  box.querySelectorAll(".share-icons a").forEach(a => a.addEventListener("click", e => { if (!ready) { e.preventDefault(); toast("批命卡還在準備，等一下再按"); } }));
+  box.querySelector("#shLink").onclick = () => ready ? copy(msg(), "連結抄好了，貼到 LINE 會帶著批命卡") : toast("批命卡還在準備，等一下再按");
   box.querySelector("#shText").onclick = () => copy(fullText(R), "整張批命抄好了");
-  let file = null, url = null;
-  const fname = `問名堂_${R.name}.png`;
-  const save = (u, name) => { const a = document.createElement("a"); a.href = u; a.download = name; document.body.append(a); a.click(); a.remove(); toast("圖片存好了"); };
   const main = box.querySelector("#shMain");
   const canShareNative = navigator.share && !framed;
-  main.textContent = canShareNative ? "分享圖片＋連結" : noDownload ? "複製連結" : "存圖片＋複製連結";
-  main.onclick = noDownload && !canShareNative ? () => copy(text + "\n" + link, "連結抄好了；圖片長按就能存") : () => {};
+  const save = (u, name) => { const a = document.createElement("a"); a.href = u; a.download = name; document.body.append(a); a.click(); a.remove(); toast("圖片存好了"); };
+  const zoom = (u, long) => {
+    const z = document.createElement("div"); z.className = "zoom" + (long ? " long" : "");
+    z.innerHTML = long ? `<p>${noDownload ? "長按圖片可以存起來・點旁邊關起來" : "往下捲看整張・點旁邊關起來"}</p><img src="${u}" alt="">` : `<img src="${u}" alt=""><p>點一下關起來</p>`;
+    z.onclick = e => { if (!long || e.target === z || e.target.tagName === "P") z.remove(); }; document.body.append(z);
+  };
+  // 1. 畫預覽卡、存到 Worker，換成帶圖的連結
   try {
-    const blob = await cardBlob(await drawLongCard(R));
-    file = new File([blob], fname, { type: "image/png" });
-    url = URL.createObjectURL(blob);
-    box.querySelector("#shPic").innerHTML = `<button type="button" class="pic-zoom long" aria-label="看整張批命長圖"><img src="${url}" alt="${esc(R.name)}的批命長圖：${R.grade}，${esc(R.headline)}"></button><p class="pic-tip">點一下看整張</p>`;
-    box.querySelector(".pic-zoom").onclick = () => {
-      const z = document.createElement("div"); z.className = "zoom";
-      z.classList.add("long");
-      z.innerHTML = `<p>${noDownload ? "長按圖片可以存起來・點旁邊關起來" : "往下捲看整張・點旁邊關起來"}</p><img src="${url}" alt="">`;
-      z.onclick = e => { if (e.target === z || e.target.tagName === "P") z.remove(); }; document.body.append(z);
-    };
+    const og = await drawOgCard(R);
+    const ogUrl = URL.createObjectURL(await cardBlob(og));
+    box.querySelector("#shPic").innerHTML = `<button type="button" class="pic-zoom" aria-label="放大看批命卡"><img src="${ogUrl}" alt="${esc(R.name)}的批命卡：${R.grade}，${esc(R.headline)}"></button>`;
+    box.querySelector(".pic-zoom").onclick = () => zoom(ogUrl, false);
+    const u = await uploadCard(R, og);
+    if (u) link = u;
+    else box.querySelector("#shTip").textContent = "批命卡沒存上去，連結先用一般的；圖片可以用下面「存整張長圖」另外傳。";
   } catch (_) { box.querySelector("#shPic").innerHTML = `<span>紅紙沒寫成，用下面的連結分享也一樣。</span>`; }
-  if (canShareNative) {
-    const data = file && navigator.canShare && navigator.canShare({ files: [file] }) ? { files: [file], title: "問名堂", text: text + "\n" + link } : { title: "問名堂", text, url: link };
-    main.onclick = async () => { try { await navigator.share(data); } catch (_) {} };
-  } else if (!noDownload) main.onclick = async () => {
-    if (!url) return;
-    const a = document.createElement("a"); a.href = url; a.download = fname; document.body.append(a); a.click(); a.remove();
-    try { await navigator.clipboard.writeText(text + "\n" + link); toast("圖存好了，連結也抄好了：先貼圖，再貼連結"); } catch (_) { copy(link, "圖存好了，連結也抄好了"); }
+  if (!box.isConnected) return;
+  ready = true; setLinks();
+  main.disabled = false;
+  main.textContent = canShareNative ? "傳給朋友" : "複製連結";
+  main.onclick = canShareNative ? async () => { try { await navigator.share({ title: "問名堂", text, url: link }); } catch (_) {} } : () => copy(msg(), "連結抄好了，貼到 LINE 會帶著批命卡");
+  // 2. 整張長圖：另外存、另外傳（IG、相簿）
+  let longP = null;
+  const getLong = () => longP || (longP = drawLongCard(R).then(cardBlob));
+  box.querySelector("#shLong").onclick = async () => {
+    try {
+      const blob = await getLong(), u = URL.createObjectURL(blob), fname = `問名堂_${R.name}.png`;
+      if (noDownload) return zoom(u, true);
+      const file = new File([blob], fname, { type: "image/png" });
+      if (canShareNative && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file] }); } catch (_) {} return; }
+      save(u, fname);
+    } catch (_) { toast("長圖沒畫成，再按一次"); }
   };
   box.querySelector("#shStory")?.addEventListener("click", async () => {
     try { save(URL.createObjectURL(await cardBlob(await drawCard(R, true))), `問名堂_${R.name}_限動.png`); } catch (_) { toast("限動圖沒畫成，再按一次"); }

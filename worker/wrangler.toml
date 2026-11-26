@@ -12,3 +12,9 @@ SITE_CALLS = "400"
 [[kv_namespaces]]
 binding = "LIMITS"
 id = "b4181e77e0c44e28adeeeeca175e77a2"
+
+# 分享卡：每次分享把預覽圖存在這裡 30 天，朋友在 LINE／臉書看到的連結預覽就是這張圖
+[[d1_databases]]
+binding = "CARDS"
+database_name = "wenming-cards"
+database_id = "b8287a10-3487-495f-95de-730ffde55941"

@@ -330,3 +330,9 @@
 
 /* 五格數字：跟匾額、名字同一套粗宋體，數字等寬對齊 */
 .g .num { font-family: var(--song); font-weight: 900; font-variant-numeric: lining-nums tabular-nums; letter-spacing: -.01em; }
+
+/* 分享面板：上面是朋友在 LINE 看到的批命卡（1200×630） */
+.share-pic.og img, .share-pic.og .pic-zoom img { width: 100%; height: auto; max-height: none; aspect-ratio: 1200 / 630; }
+.share-pic.og { min-height: 0; }
+#shTip { margin: -2px 0 2px; }
+.share .btn.main:disabled { filter: saturate(.4) brightness(.85); cursor: progress; }

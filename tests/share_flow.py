@@ -8,7 +8,7 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     for w, h in [(390, 844), (1366, 800)]:
         ctx = b.new_context(viewport={"width": w, "height": h}, device_scale_factor=2, has_touch=w < 900)
-        ctx.grant_permissions(["clipboard-read", "clipboard-write"]); fake_worker(ctx)
+        ctx.grant_permissions(["clipboard-read", "clipboard-write"]); fw = fake_worker(ctx)
         pg = ctx.new_page(); errs = []
         pg.on("pageerror", lambda e: errs.append(str(e))); pg.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
         pg.goto(U); pg.wait_for_selector("#enter:not([disabled])"); pg.click("#enter"); pg.wait_for_timeout(900)
@@ -18,11 +18,13 @@ with sync_playwright() as p:
         pg.click(".skip"); pg.wait_for_selector(".hero", timeout=30000); pg.wait_for_timeout(800)
         pg.evaluate("document.querySelector('#shareR').scrollIntoView({block:'center'})"); pg.wait_for_timeout(300)
         pg.screenshot(path=f"{out}/{w}_1_reading_share_btn.png")
-        pg.click("#shareR"); pg.wait_for_selector(".share-pic img", timeout=20000); pg.wait_for_timeout(600)
+        pg.click("#shareR"); pg.wait_for_selector("#shMain:not([disabled])", timeout=20000); pg.wait_for_timeout(600)
         pg.screenshot(path=f"{out}/{w}_2_panel.png")
         pg.click("#shLink"); pg.wait_for_timeout(300)
         link = pg.evaluate("navigator.clipboard.readText()")
-        print(w, "link:", link)
+        print(w, "copied:", link.replace(chr(10), " / "))
+        # 線上是 Worker 的 /s/<id> 轉到這個目標；測試直接開目標（換成本機）
+        link = fw["card"].replace("https://dhoper.github.io/wenmingtang/", U)
         pg.click("#shClose"); pg.wait_for_timeout(400)
         # 朋友打開連結
         pg2 = ctx.new_page(); pg2.on("pageerror", lambda e: errs.append(str(e)))

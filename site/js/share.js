@@ -419,3 +419,96 @@ export async function drawLongCard(R) {
   await render(cv.getContext("2d"), H);
   return cv;
 }
+
+/** 連結預覽卡（1200×630，LINE、臉書、Threads 的標準比例）：朋友收到連結時看到的就是這張 */
+export async function drawOgCard(R) {
+  const W = 1200, H = 630;
+  const pose = R.renameAdvised ? "stern" : "approve";
+  const [bg, master, paper, slip, frame, seal] = await Promise.all([
+    "assets/scene/bg.webp", `assets/master/${pose}.webp`, "assets/ui/paper.webp", "assets/ui/slip-frame.webp", "assets/ui/red-frame.webp", "assets/props/seal.webp",
+  ].map(img));
+  const plain = (R.aiParts && R.aiParts.headline) || R.headlinePlain;
+  const txt = R.name + R.grade + R.headline + plain + "問名堂乾坤造批天人地外總格木火土金水大吉凶半夜裡的廟口把名字交給算命先生";
+  await Promise.all([document.fonts.load(`900 100px ${SONG}`, txt), document.fonts.load(`400 40px ${KAI}`, txt)]).catch(() => {});
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d"); ctx.textBaseline = "middle"; ctx.textAlign = "left";
+  tile(ctx, paper, 0, 0, W, H, 360);
+  nine(ctx, slip, 118, 0, 0, W, H, 36);
+  // 左：廟埕與先生
+  const px = 48, py = 48, pw = 380, ph = H - 96;
+  ctx.save(); ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip();
+  const s = Math.max(pw / bg.naturalWidth, ph / bg.naturalHeight);
+  ctx.drawImage(bg, px + (pw - bg.naturalWidth * s) / 2, py - 20, bg.naturalWidth * s, bg.naturalHeight * s);
+  const g = ctx.createLinearGradient(0, py, 0, py + ph); g.addColorStop(0, "rgba(10,12,20,0)"); g.addColorStop(.6, "rgba(10,12,20,.1)"); g.addColorStop(1, "rgba(10,12,20,.8)");
+  ctx.fillStyle = g; ctx.fillRect(px, py, pw, ph);
+  const mw = pw * 1.25, mh = mw * master.naturalHeight / master.naturalWidth;
+  ctx.drawImage(master, px + (pw - mw) / 2, py + ph * .2, mw, mh);
+  ctx.restore();
+  nine(ctx, frame, 56, px - 8, py - 8, pw + 16, ph + 16, 16, true);
+  ctx.shadowColor = "rgba(0,0,0,.85)"; ctx.shadowBlur = 10;
+  ctx.font = `900 56px ${SONG}`; ctx.fillStyle = "#f3d48c"; ctx.fillText("問名堂", px + 28, py + ph - 74);
+  ctx.font = `400 22px ${KAI}`; ctx.fillStyle = "#f6ead4"; ctx.fillText("夜裡的廟口，把名字交給算命先生", px + 30, py + ph - 30);
+  ctx.shadowColor = "transparent";
+  // 右：名字、評等朱印
+  const rx = 470, rr = W - 56, rw = rr - rx;
+  ctx.save(); ctx.translate(rr - 84, 132); ctx.rotate(-0.1);
+  ctx.drawImage(seal, -84, -84, 168, 168);
+  ctx.textAlign = "center"; ctx.fillStyle = "#a8231a"; ctx.font = `900 ${R.grade.length > 1 ? 56 : 80}px ${SONG}`;
+  if (R.grade.length > 1) { ctx.fillText(R.grade[0], 0, -27); ctx.fillText(R.grade.slice(1), 0, 34); } else ctx.fillText(R.grade, 0, 4);
+  ctx.restore();
+  const nameStr = [...R.name].join(" ");
+  let fs = 100; ctx.font = `900 ${fs}px ${SONG}`;
+  while (ctx.measureText(nameStr).width > rw - 200 && fs > 56) { fs -= 4; ctx.font = `900 ${fs}px ${SONG}`; }
+  ctx.fillStyle = "#1c0f08"; ctx.fillText(nameStr, rx, 118);
+  ctx.font = `400 26px ${KAI}`; ctx.fillStyle = "#6b5443"; ctx.fillText(`${R.gender === "f" ? "坤造" : "乾造"}・問名堂批`, rx + 4, 190);
+  // 批語與先生一句
+  ctx.font = `400 36px ${KAI}`; ctx.fillStyle = "#2a1a10";
+  const hl = []; R.headline.split("，").forEach((c, i, a) => { const piece = c + (i < a.length - 1 ? "，" : "。"), last = hl[hl.length - 1]; if (last && ctx.measureText(last + piece).width <= rw - 30) hl[hl.length - 1] = last + piece; else hl.push(piece); });
+  hl.slice(0, 2).forEach((t, i) => ctx.fillText(t, rx + 22, 254 + i * 50));
+  ctx.fillStyle = "#a8231a"; ctx.fillRect(rx, 230, 5, Math.min(2, hl.length) * 50 - 4);
+  let y = 254 + Math.min(2, hl.length) * 50 + 14;
+  ctx.font = `400 25px ${KAI}`; ctx.fillStyle = "#3a2618";
+  let pl = wrap(ctx, plain, rw), pt = plain;
+  while (pl.length > 2) { const i = pt.slice(0, -1).lastIndexOf("。"); if (i < 0) { pl = pl.slice(0, 2); pl[1] = pl[1].slice(0, -1) + "……"; break; } pt = pt.slice(0, i + 1); pl = wrap(ctx, pt, rw); }
+  pl.forEach(t => { ctx.fillText(t, rx, y); y += 38; });
+  // 先生總說：空間夠才放，一兩句，在句號斷
+  const gy = H - 48 - 128, gap = 12, gw = (rw - gap * 4) / 5, gh = 128;
+  ctx.font = `400 25px ${KAI}`;
+  let st = summaryLine(R), sl = wrap(ctx, "先生說：" + st, rw);
+  const room = Math.floor((gy - 22 - (y + 8)) / 38);
+  while (sl.length > room && st.slice(0, -1).lastIndexOf("。") > 0) { st = st.slice(0, st.slice(0, -1).lastIndexOf("。") + 1); sl = wrap(ctx, "先生說：" + st, rw); }
+  if (room > 0 && sl.length <= room) { y += 8; ctx.fillStyle = "#8a2a1e"; sl.forEach(t => { ctx.fillText(t, rx, y); y += 38; }); }
+  // 五格小籤
+  GRID_KEYS.forEach((k, i) => {
+    const gg = R.wuge[k], x = rx + i * (gw + gap);
+    nine(ctx, slip, 118, x, gy, gw, gh, 12);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#5a4232"; ctx.font = `700 21px ${SONG}`; ctx.fillText(GRID_INFO[k].label, x + gw / 2, gy + 28);
+    ctx.fillStyle = "#1c0f08"; ctx.font = `900 42px ${SONG}`; ctx.fillText(String(gg.n), x + gw / 2, gy + 66);
+    ctx.font = `900 21px ${SONG}`; ctx.fillStyle = EL_COLOR[gg.el][0]; ctx.fillText(gg.el, x + gw / 2 - 22, gy + 103);
+    ctx.font = `700 20px ${SONG}`; ctx.fillStyle = gg.lv >= 1 ? "#2f6b3a" : gg.lv <= -1 ? "#a8231a" : "#5a4232";
+    ctx.fillText(({ 吉多於凶: "半吉", 凶多於吉: "半凶" })[gg.level] || gg.level, x + gw / 2 + 14, gy + 103);
+    ctx.textAlign = "left";
+  });
+  return cv;
+}
+
+/** 把預覽卡存到 Worker，換一個帶著這張圖的專屬連結；失敗就回 null（改用一般連結） */
+const cardLinks = new Map();
+export async function uploadCard(R, cv) {
+  const key = [R.name, R.surname.length, R.gender, R.topic, R.grade, (R.aiParts && R.aiParts.headline) || ""].join("|");
+  if (cardLinks.has(key)) return cardLinks.get(key);
+  if (!CONFIG.AI_ENDPOINT || framed) return null;
+  let q = .86, data = cv.toDataURL("image/jpeg", q);
+  while (data.length * .75 > 420 * 1024 && q > .5) { q -= .1; data = cv.toDataURL("image/jpeg", q); }
+  const target = shareLink(R).replace(/r\/\d\.html#/, "#");
+  const desc = `「${R.headline}」換你，名字拿去給先生看看。`;
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const res = await fetch(CONFIG.AI_ENDPOINT.replace(/\/$/, "") + "/card", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ img: data, title: `${R.name}的名字，先生批【${R.grade}】｜問名堂`, desc, target }), signal: ctl.signal });
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (j && j.url) { cardLinks.set(key, j.url); return j.url; }
+    return null;
+  } catch (_) { return null; } finally { clearTimeout(timer); }
+}

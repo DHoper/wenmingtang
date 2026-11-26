@@ -16,6 +16,10 @@ def fake_worker(target, mode=None):
     def route(r):
         if r.request.method == "OPTIONS":
             return r.fulfill(status=204, headers={"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*"})
+        if r.request.url.endswith("/card"):
+            try: mode["card"] = json.loads(r.request.post_data or "{}").get("target")
+            except Exception: pass
+            return r.fulfill(status=200, body=json.dumps({"id": "test123", "url": "https://wenming-ai.oracle-tarot.workers.dev/s/test123"}), headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"})
         if mode["v"] != "ok":
             return r.fulfill(status=429, body=json.dumps({"error": mode["v"]}), headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"})
         body = sse(READING if '"reading"' in (r.request.post_data or "") else ASK)
