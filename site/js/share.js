@@ -58,6 +58,9 @@ export function shareLink(R) {
 }
 /** App 內瀏覽器（LINE、IG、FB）會擋下載 */
 export const inApp = /Line\/|Instagram|FBAN|FBAV/i.test(navigator.userAgent);
+/** 被別的網頁框住（例如 Claude 預覽）時，下載與系統分享都會被擋 */
+export const framed = (() => { try { return top !== self; } catch (_) { return true; } })();
+export const noDownload = inApp || framed;
 export function shareText(R) {
   return `我的名字給廟口先生批到【${R.grade}】${R.score}分：「${R.headline}」。換你，名字拿去給先生看看。`;
 }

@@ -10,7 +10,7 @@ import { slot, preload } from "./assets.js";
 import { aiAvailable, aiReading } from "./ai.js";
 import { sfx, soundOn, setSound } from "./sfx.js";
 import { particles, crossfade, typeHTML, riseOnChange, pulse, reduced } from "./fx.js";
-import { drawCard, cardBlob, shareLink, shareText, inApp } from "./share.js";
+import { drawCard, cardBlob, shareLink, shareText, noDownload, framed } from "./share.js";
 {
 const $ = s => document.querySelector(s);
 const app = $("#app"), say = $("#say"), act = $("#act"), sheet = $("#sheet"), paper = $("#paper"), paperText = $("#paperText"), canvas = $("#canvas"), viewport = $("#viewport");
@@ -514,11 +514,11 @@ async function openShare(R) {
         <a class="btn ghost" href="https://www.threads.com/intent/post?text=${enc(text)}&url=${enc(link)}" target="_blank" rel="noopener">Threads</a>
         <button type="button" class="btn ghost" id="shLink">複製連結</button>
       </div>
-      <div class="share-grid g2" ${inApp ? "hidden" : ""}>
+      <div class="share-grid g2" ${noDownload ? "hidden" : ""}>
         <button type="button" class="btn ghost" id="shSave">存圖片</button>
         <button type="button" class="btn ghost" id="shStory">存限動圖</button>
       </div>
-      <p class="share-note">${inApp ? "這裡不能直接下載，<b>長按上面的圖</b>就能存起來，再貼到 IG 限動。" : "圖片跟連結都不會帶你的生日。要發 IG 限動，先存「限動圖」再到 IG 發。"}</p>
+      <p class="share-note">${noDownload ? "這裡不能直接下載，<b>長按上面的圖</b>就能存起來，再貼到 IG 限動。" : "圖片跟連結都不會帶你的生日。要發 IG 限動，先存「限動圖」再到 IG 發。"}</p>
       <div class="row"><button type="button" class="btn ghost" id="shText">抄全文</button><button type="button" class="btn ghost" id="shClose">收起來</button></div>
     </div>`;
   document.body.append(box);
@@ -545,7 +545,7 @@ async function openShare(R) {
   };
   const nb = box.querySelector("#shNative");
   const data = file && navigator.canShare && navigator.canShare({ files: [file] }) ? { files: [file], text: text + "\n" + link } : { title: "問名堂", text, url: link };
-  if (navigator.share) {
+  if (navigator.share && !framed) {
     nb.hidden = false;
     nb.onclick = async () => { try { await navigator.share(data); } catch (_) {} };
   }
