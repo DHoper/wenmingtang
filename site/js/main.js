@@ -12,7 +12,7 @@ import { slot, preload } from "./assets.js";
 import { aiAvailable, aiAsk, askLeft, LIMITS } from "./ai.js";
 import { sfx, soundOn, setSound } from "./sfx.js";
 import { particles, crossfade, typeHTML, riseOnChange, pulse, reduced } from "./fx.js";
-import { drawCard, cardBlob, shareLink, shareText, noDownload, framed } from "./share.js";
+import { drawCard, drawPostcard, cardBlob, shareLink, shareText, noDownload, framed } from "./share.js";
 {
 const $ = s => document.querySelector(s);
 const app = $("#app"), say = $("#say"), act = $("#act"), sheet = $("#sheet"), paper = $("#paper"), paperText = $("#paperText"), canvas = $("#canvas"), viewport = $("#viewport");
@@ -683,7 +683,7 @@ async function openShare(R) {
   box.className = "share";
   box.innerHTML = `<div class="share-in f-slip" role="dialog" aria-modal="true" aria-labelledby="shH">
       <button type="button" class="share-x" id="shClose" aria-label="收起來">收</button>
-      <p class="share-h" id="shH">這張紅紙，拿去給朋友看</p>
+      <p class="share-h" id="shH">這張明信片，寄給朋友看</p>
       <div class="share-pic" id="shPic"><span>紅紙正在寫……</span></div>
       <button type="button" class="btn main wide" id="shMain"></button>
       <div class="share-icons">
@@ -709,13 +709,13 @@ async function openShare(R) {
   const save = (u, name) => { const a = document.createElement("a"); a.href = u; a.download = name; document.body.append(a); a.click(); a.remove(); toast("圖片存好了"); };
   const main = box.querySelector("#shMain");
   const canShareNative = navigator.share && !framed;
-  main.textContent = canShareNative ? "分享這張紅紙" : noDownload ? "複製連結" : "存下這張紅紙";
+  main.textContent = canShareNative ? "分享這張明信片" : noDownload ? "複製連結" : "存下這張明信片";
   main.onclick = noDownload && !canShareNative ? () => copy(link, "連結抄好了，貼給朋友就好") : () => {};
   try {
-    const blob = await cardBlob(await drawCard(R));
+    const blob = await cardBlob(await drawPostcard(R));
     file = new File([blob], fname, { type: "image/png" });
     url = URL.createObjectURL(blob);
-    box.querySelector("#shPic").innerHTML = `<img src="${url}" alt="${esc(R.name)}的批命紅紙：${R.grade}，${esc(R.headline)}">`;
+    box.querySelector("#shPic").innerHTML = `<img src="${url}" alt="${esc(R.name)}的批命明信片：${R.grade}，${esc(R.headline)}">`;
   } catch (_) { box.querySelector("#shPic").innerHTML = `<span>紅紙沒寫成，用下面的連結分享也一樣。</span>`; }
   if (canShareNative) {
     const data = file && navigator.canShare && navigator.canShare({ files: [file] }) ? { files: [file], text: text + "\n" + link } : { title: "問名堂", text, url: link };

@@ -271,3 +271,5 @@
 .pk-o[aria-pressed=true]::before { width: 5px; height: 26px; left: 10px; transform: translateY(-50%); background: url(../assets/ui/stroke-red-v.webp) center / 100% 100% no-repeat; }
 .pk-year .pk-o + .pk-o { background: url(../assets/ui/stroke.webp) center top / 88% 2px no-repeat !important; opacity: 1; }
 .pk-year .pk-o { background-blend-mode: normal; }
+/* 分享面板：明信片是橫的 */
+.share-pic img { aspect-ratio: 3 / 2; max-height: none; width: 100%; }
