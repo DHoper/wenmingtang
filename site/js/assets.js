@@ -11,7 +11,7 @@ export const ASSETS = {
   "master/stern":   { label: "老師傅・正色", ar: 560 / 572, src: "assets/master/stern.webp" },
   "props/table":    { label: "紅布木桌", ar: 1100 / 540, src: "assets/props/table.webp" },
   "props/brush":    { label: "毛筆與硯台", ar: 360 / 246, src: "assets/props/brush.webp" },
-  "props/token":    { label: "黃楊木牌", ar: 501 / 1179, src: "assets/props/token.webp" },
+  "props/token":    { label: "黃楊木牌", ar: 501 / 1124, src: "assets/props/token.webp" },
 };
 
 /** 產生素材插槽 HTML：有圖就放圖，沒圖就放佔位框 */

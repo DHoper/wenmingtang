@@ -171,7 +171,8 @@ function askName() {
   speak(kid ? `小孩<span class="q">姓什麼？</span>寫在紅紙上。` : `名字寫給我看，<span class="q">寫全名。</span>`);
   act.innerHTML = `<form class="pen" id="penForm" autocomplete="off">
       <label class="sr" for="nameIn">${kid ? "小孩的姓" : "全名"}</label>
-      <input id="nameIn" maxlength="${kid ? 2 : 5}" enterkeyhint="done" placeholder="${kid ? "例如：林" : "例如：林家豪"}" value="${esc(S.chars.join(""))}">
+      ${kid ? `<p class="pen-tip">幫小孩取名：<b>只寫姓</b>，名字我來挑</p>` : ""}
+      <input id="nameIn" enterkeyhint="done" placeholder="${kid ? "只寫姓，例如：林" : "寫全名，例如：林家豪"}" value="${esc(S.chars.join(""))}">
       <div id="nameNote"></div>
       <button type="submit" class="btn main wide" id="nameOk" disabled>${kid ? "就這個姓" : "就這個名字"}</button>
     </form>`;
@@ -205,6 +206,8 @@ async function onNameInput(raw) {
   if (conv.length) html += `<p class="fine">筆畫要照康熙字典算，我先幫你寫成繁體字。</p>`;
   for (const m of multi) html += `<p class="fine">是哪一個字？</p><div class="opts">${m.opts.map(o => `<button type="button" class="opt" data-i="${m.i}" data-c="${esc(o)}" aria-pressed="${S.chars[m.i] === o}">${esc(o)}</button>`).join("")}</div>`;
   if (unknown.length) html += `<p class="fine">「${esc(unknown.join("、"))}」這字我字典翻不到，筆畫不敢亂算，換個寫法看看。</p>`;
+  if (S.mode === "name" && chars.length > 2) html += `<p class="fine warn">幫小孩取名只要寫姓就好，名字我來挑。要看自己的名字，按左上角「返」，選「看名字」。</p>`;
+  if (S.mode === "read" && chars.length > 5) html += `<p class="fine warn">名字最多五個字，複姓加三個字也夠了。</p>`;
   const sp = currentSplit();
   if (S.mode === "read" && chars.length >= 3) {
     const two = chars.slice(0, 2).join("");
@@ -469,7 +472,7 @@ function showReading(R, opts = {}) {
     <div class="ask f-slip" id="askBox" hidden>
       <p class="ask-h">還有想問的，跟先生講</p>
       <div class="ask-log" id="askLog"></div>
-      <textarea id="askQ" rows="2" maxlength="${LIMITS.QUESTION_MAX}" placeholder="例如：這個名字適合自己做生意嗎？" aria-label="想問先生的事"></textarea>
+      <textarea id="askQ" rows="2" placeholder="例如：這個名字適合自己做生意嗎？" aria-label="想問先生的事"></textarea>
       <div class="ask-foot"><span id="askMeta"></span><button type="button" class="btn main" id="askGo">請先生細說</button></div>
     </div>
     <article class="reading" id="readingBody" data-mode="${view}">
@@ -503,7 +506,7 @@ function setupAsk(R) {
   const sync = () => {
     const n = [...q.value.trim()].length, left = askLeft();
     go.textContent = n ? "叩問" : "請先生細說";
-    meta.innerHTML = `${n}／${LIMITS.QUESTION_MAX} 字・今天還能問 <b>${left}</b> 次`;
+    meta.innerHTML = n > LIMITS.QUESTION_MAX ? `<em>超過 ${n - LIMITS.QUESTION_MAX} 個字</em>，講重點就好` : `${n}／${LIMITS.QUESTION_MAX} 字・今天還能問 <b>${left}</b> 次`;
     go.disabled = n > LIMITS.QUESTION_MAX;
   };
   q.oninput = sync; sync();
@@ -563,7 +566,7 @@ async function showRename(R) {
     <div class="cond f-slip"><p class="cond-sum" id="condSum"></p><button type="button" class="opt small" id="condBtn" aria-expanded="false">改條件</button></div>
     <div class="cond-body f-slip" id="condBody" hidden>
       <p class="cond-row">名字取<span class="opts"><button type="button" class="opt" data-len="2">兩個字</button><button type="button" class="opt" data-len="1">一個字</button></span></p>
-      <p class="cond-row">要留的字<input id="rKeepCh" maxlength="1" placeholder="沒有" aria-label="要留的字">放<span class="opts"><button type="button" class="opt" data-kp="0">頭一個</button><button type="button" class="opt" data-kp="1">後一個</button></span></p>
+      <p class="cond-row">要留的字<input id="rKeepCh" placeholder="沒有" aria-label="要留的字（一個字）">放<span class="opts"><button type="button" class="opt" data-kp="0">頭一個</button><button type="button" class="opt" data-kp="1">後一個</button></span></p>
       <p class="cond-row">不要用的字<input id="rEx" class="long" placeholder="例如：美、玲" aria-label="不要用的字"></p>
       <p class="cond-row"><span class="opts"><button type="button" class="opt" id="rFree">男女的字都可以用</button></span></p>
       <button type="button" class="btn main wide" id="rGo">照這樣再挑</button>
