@@ -7,7 +7,9 @@ function getSample() {
   if (!samplePromise) samplePromise = (window.claude && claude.use ? claude.use("sample") : Promise.resolve(null)).catch(() => null);
   return samplePromise;
 }
-export async function aiAvailable() { return !!CONFIG.AI_ENDPOINT || !!(await getSample()); }
+// 被框住（Claude 預覽）時對外連線會被擋，只有預覽本身提供的模型能用
+const framed = (() => { try { return top !== self; } catch (_) { return true; } })();
+export async function aiAvailable() { return framed ? !!(await getSample()) : !!CONFIG.AI_ENDPOINT || !!(await getSample()); }
 
 export function aiBasis(R) {
   const w = R.wuge, g = k => `${w[k].n}畫（${w[k].el}）${w[k].level}・${w[k].name}`;
