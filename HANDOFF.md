@@ -13,10 +13,14 @@
 - **手機版重新設計**（設計審查 28 項全做）：固定舞台構圖、窗框頭像、頂列「返」牌、生辰帖（毛筆字＋宣紙選單，不用原生下拉）、竹籤候選名、條件抽屜、宣紙結果卡、兩名對照、分享面板、上回批命。樣式在 `css/mobile.css`，動態在 `css/motion.css`（一條減速曲線、不彈跳；操作區用 FLIP 跟舞台同步滑動）。
 - **先生親口批（AI）**（11-26 業主決定）：批命頁的**所有評語都由 AI 寫**，引擎算出來的五格、白話只當 AI 的依據與備援。數字（評等、五格、三才、八字）照引擎馬上顯示，評語位置先寫「先生正在寫……」，AI 依【總評】【天格】…【總結】一段一段串流寫進去（`site/js/ai.js` 的 `aiReadingFull`、`main.js` 的 `runAIReading`）。AI 失敗或次數用完，換回引擎的句子。
   - 批完是「追問先生」：每張批命追問 3 次（標題右邊三支籤，問一次淡一支），每次 50 字內、回答 240 字內。
-  - 次數（`js/ai-prompt.js` 的 LIMITS，Worker 的 wrangler.toml vars 要同步）：每人每天 3 張 AI 批命、追問 9 次；全站每天 400 次。用完跳「神力耗盡」（批命用完／追問用完／全站用完／這張問完了，四種文案）。
+  - 次數（`js/ai-prompt.js` 的 LIMITS，Worker 的 wrangler.toml vars 要同步）：每台裝置每天 3 張 AI 批命、追問 9 句（每張 3 句，記在瀏覽器）；同一 IP 上限是裝置的 8 倍（手機網路共用 IP）；全站每天 400 次。**計數記在 D1 的 counters 表**（原子遞增、先扣再呼叫 DeepSeek、失敗退回；11-27 審查後從 KV 改過來，KV 已不用）。用完跳「神力耗盡」（批命／追問／全站／這張問完了四種），每次進站只跳一次。
+  - 朋友傳來的那張不自動請 AI，要按「請先生親口批」才扣看的人的次數。AI 寫到一半離開再回來接著用，不重扣。
+  - Worker 會用白名單檢查送來的批命依據；分享卡標題、描述格式固定，全站每天 3000 張、每 IP 30 張。
+  - **待辦**：`npx wrangler secret put SALT` 設一個隨機字串（目前用程式裡的預設值，IP 雜湊可被反推；11-27 我要設時被權限擋下，等業主決定）。可再加 Cloudflare Turnstile 擋腳本。
+  - DeepSeek 餘額 11-27 是 US$1.49；一張 AI 批命約 US$0.002，全站 400 次用滿一天約 US$0.8。
   - 看過的 AI 批命存在瀏覽器（`wenming:aiCache`，留 20 張），重看不扣次數。
   - Worker：`worker/src/index.js`，mode = reading | ask，已部署。`node worker/try_reading.mjs` 本機試一整張（會花 DeepSeek）。
-  - **測試一律用假 Worker**（`tests/fake_worker.py`），不然會吃掉本機 IP 的線上次數；吃到了用 `npx wrangler kv key list/delete --namespace-id b4181e77e0c44e28adeeeeca175e77a2 --remote` 清掉今天 `u:` 開頭的鍵。
+  - **測試一律用假 Worker**（`tests/fake_worker.py`），不然會吃線上次數。真的要測線上：`python tests/live_ai.py <資料夾>`（批一張＋追問一句＋存卡，約 US$0.003）。
 - **文字**：審查代理抓 61 句 AI 腔已改；五格白話講出是哪幾個字幾畫。新寫任何字先對照 `docs/voice.md`。
 - **素材**：Recraft 這次共用約 115 點（表情 2 張、筆墨一筆、窗框、竹籤）。
 - **測試**：`python tests/full_check.py <資料夾> 390x844 360x740 768x1024 1366x768 1920x1080`（33 個步驟、自動檢查＋截圖），`python tests/report_pdf.py <資料夾> <pdf>` 產報告；`tests/jank.py`、`tests/filmstrip.py` 查動畫抖動；`tests/ask_ui.py` 查叩問區；`node worker/review.mjs` 產生 AI 實際問答（會花 DeepSeek 次數）。

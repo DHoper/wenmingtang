@@ -471,7 +471,7 @@ export async function drawOgCard(R) {
   while (pl.length > 2) { const i = pt.slice(0, -1).lastIndexOf("。"); if (i < 0) { pl = pl.slice(0, 2); pl[1] = pl[1].slice(0, -1) + "……"; break; } pt = pt.slice(0, i + 1); pl = wrap(ctx, pt, rw); }
   pl.forEach(t => { ctx.fillText(t, rx, y); y += 38; });
   // 先生總說：空間夠才放，一兩句，在句號斷
-  const gy = H - 48 - 128, gap = 12, gw = (rw - gap * 4) / 5, gh = 128;
+  const gy = H - 58 - 128, gap = 12, gw = (rw - gap * 4) / 5, gh = 128;
   ctx.font = `400 25px ${KAI}`;
   let st = summaryLine(R), sl = wrap(ctx, "先生說：" + st, rw);
   const room = Math.floor((gy - 22 - (y + 8)) / 38);
@@ -484,9 +484,13 @@ export async function drawOgCard(R) {
     ctx.textAlign = "center";
     ctx.fillStyle = "#5a4232"; ctx.font = `700 21px ${SONG}`; ctx.fillText(GRID_INFO[k].label, x + gw / 2, gy + 28);
     ctx.fillStyle = "#1c0f08"; ctx.font = `900 42px ${SONG}`; ctx.fillText(String(gg.n), x + gw / 2, gy + 66);
-    ctx.font = `900 21px ${SONG}`; ctx.fillStyle = EL_COLOR[gg.el][0]; ctx.fillText(gg.el, x + gw / 2 - 22, gy + 103);
+    const lvT = ({ 吉多於凶: "半吉", 凶多於吉: "半凶" })[gg.level] || gg.level;
+    ctx.font = `900 21px ${SONG}`; const ew = ctx.measureText(gg.el).width;
+    ctx.font = `700 20px ${SONG}`; const lw2 = ctx.measureText(lvT).width;
+    const sx = x + gw / 2 - (ew + 6 + lw2) / 2;
+    ctx.font = `900 21px ${SONG}`; ctx.fillStyle = EL_COLOR[gg.el][0]; ctx.fillText(gg.el, sx + ew / 2, gy + 103);
     ctx.font = `700 20px ${SONG}`; ctx.fillStyle = gg.lv >= 1 ? "#2f6b3a" : gg.lv <= -1 ? "#a8231a" : "#5a4232";
-    ctx.fillText(({ 吉多於凶: "半吉", 凶多於吉: "半凶" })[gg.level] || gg.level, x + gw / 2 + 14, gy + 103);
+    ctx.fillText(lvT, sx + ew + 6 + lw2 / 2, gy + 103);
     ctx.textAlign = "left";
   });
   return cv;

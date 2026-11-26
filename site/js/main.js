@@ -115,7 +115,7 @@ function setPhase(p) {
 }
 // 頂列「返」牌
 const backBtn = $("#backBtn");
-function setBack(fn) { S.back = fn; backBtn.hidden = !fn; }
+function setBack(fn) { S.back = fn; backBtn.style.visibility = fn ? "" : "hidden"; backBtn.hidden = false; backBtn.setAttribute("aria-hidden", fn ? "false" : "true"); backBtn.tabIndex = fn ? 0 : -1; }
 backBtn.onclick = () => { if (S.back) S.back(); };
 function speak(html) {
   S.said = html;
@@ -128,7 +128,7 @@ function speak(html) {
 function toast(msg) { const t = document.createElement("div"); t.className = "toast f-slip"; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 2600); }
 // 批命、擬名、對照頁頂端：老先生在窗框裡，旁邊是他說的話
 function rtop(title, sub, html, extra = "") {
-  return `<div class="rtop"><span class="medal" aria-hidden="true"><i style="background-image:url(assets/master/${S.pose}.webp)"></i></span>
+  return `<div class="rtop"><span class="medal" aria-hidden="true"><i style="background-image:url(assets/master/${S.pose === "count" ? "idle" : S.pose}.webp)"></i></span>
     <div class="rtop-r"><p class="who">${title}${sub ? `<small>${sub}</small>` : ""}</p><p class="rsay">${html}</p></div>${extra}</div>`;
 }
 
@@ -483,13 +483,13 @@ function showReading(R, opts = {}) {
     <p class="sancai">三才　${R.sancai.key.split("").join("・")}　${R.sancai.level}</p>
     <p class="ai-note" id="aiNote" hidden></p>
     <article class="reading" id="readingBody" data-mode="${view}">
-      ${R.sections.map(s => `<section class="sec" id="sec-${s.key}" data-k="${s.key}"><h3>${esc(s.title)}</h3>${s.key === "bazi" ? baziBlock(R.bazi) : ""}<p class="pi">${s.pi.map(l => `<span>${clauses(l)}</span>`).join("")}</p><p class="bai">${prose(s.bai)}</p>${s.reasons ? `<ul class="reasons">${s.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}</section>`).join("")}
+      ${R.sections.map(s => `<section class="sec" id="sec-${s.key}" data-k="${s.key}"><h3>${esc(s.title)}</h3>${s.key === "bazi" ? baziBlock(R.bazi) : ""}<p class="pi">${s.pi.map(l => `<span>${clauses(l)}</span>`).join("")}</p><p class="bai">${prose(s.bai)}</p></section>`).join("")}
     </article>
     <div class="ask f-slip" id="askBox" hidden>
       <div class="ask-top"><p class="ask-h">追問先生</p><div class="ask-left" id="askLeft" role="img"></div></div>
       <p class="ask-sub">批完了，還有想問的，一句一句問。</p>
       <div class="ask-log" id="askLog"></div>
-      <div class="ask-in"><textarea id="askQ" rows="2" placeholder="例如：這個名字適合自己做生意嗎？" aria-label="想問先生的事"></textarea><span class="ask-count" id="askMeta" aria-live="polite"></span></div>
+      <div class="ask-in"><textarea id="askQ" rows="2" placeholder="例如：適合做生意嗎？" aria-label="想問先生的事"></textarea><span class="ask-count" id="askMeta" aria-live="polite"></span></div>
       <button type="button" class="btn main ask-go" id="askGo">追問</button>
     </div>
     <div class="after">
@@ -569,7 +569,7 @@ function setupAsk(R) {
     lb.innerHTML = `<span>${left ? "還能問" + (left === 2 ? "兩" : num(left)) + "次" : "這張問完了"}</span>` + Array.from({ length: LIMITS.FOLLOWUPS }, (_, i) => `<i class="${i < left ? "" : "used"}"></i>`).join("");
     lb.setAttribute("aria-label", `這張還能問 ${left} 次`);
     go.disabled = over || n === 0 || !left;
-    q.placeholder = left ? "例如：這個名字適合自己做生意嗎？" : "這張問完了，想再問就換一個名字請先生看。";
+    q.placeholder = left ? "例如：適合做生意嗎？" : "這張問完了，想再問就換一個名字請先生看。";
     q.readOnly = !left;
   };
   q.oninput = sync; sync();
@@ -638,7 +638,7 @@ async function showRename(R) {
     <div class="cond f-slip"><p class="cond-sum" id="condSum"></p><button type="button" class="opt small" id="condBtn" aria-expanded="false">換個挑法</button></div>
     <div class="cond-body f-slip" id="condBody" hidden>
       <p class="cond-row">名字取<span class="opts"><button type="button" class="opt" data-len="2">兩個字</button><button type="button" class="opt" data-len="1">一個字</button></span></p>
-      <p class="cond-row">要留的字<input id="rKeepCh" placeholder="沒有" aria-label="要留的字（一個字）">放<span class="opts"><button type="button" class="opt" data-kp="0">頭一個</button><button type="button" class="opt" data-kp="1">後一個</button></span></p>
+      <p class="cond-row">要留的字<input id="rKeepCh" placeholder="沒有" aria-label="要留的字（一個字）"><span class="kp-grp">放在<span class="opts"><button type="button" class="opt" data-kp="0">頭一個</button><button type="button" class="opt" data-kp="1">後一個</button></span></span></p>
       <p class="cond-row">不要用的字<input id="rEx" class="long" placeholder="例如：美、玲" aria-label="不要用的字"></p>
       <p class="cond-row"><span class="opts"><button type="button" class="opt" id="rFree">男女的字都可以用</button></span></p>
       <button type="button" class="btn main wide" id="rGo">照這樣再挑</button>
@@ -651,7 +651,7 @@ async function showRename(R) {
     act.querySelectorAll("[data-kp]").forEach(b => { b.setAttribute("aria-pressed", b.dataset.kp === String(st.keepPos)); b.disabled = st.length === 1 && b.dataset.kp === "1"; });
     $("#rFree").setAttribute("aria-pressed", st.leanFree);
     const g = S.gender === "f" ? "女" : "男";
-    $("#condSum").textContent = [st.length === 1 ? "取一個字" : "取兩個字", st.leanFree ? "男女都可以" : `照${g}生的字`, st.keepCh ? `留「${st.keepCh}」` : "不留字", st.exclude.trim() ? `不用「${st.exclude.replace(/[^\p{Script=Han}]/gu, "")}」` : ""].filter(Boolean).join("・");
+    $("#condSum").innerHTML = [st.length === 1 ? "取一個字" : "取兩個字", st.leanFree ? "男女都可以" : `照${g}生的字`, st.keepCh ? `留「${st.keepCh}」` : "不留字", st.exclude.trim() ? `不用「${st.exclude.replace(/[^\p{Script=Han}]/gu, "")}」` : ""].filter(Boolean).map(x => `<span class="seg">${esc(x)}</span>`).join("・");
   };
   act.querySelectorAll("[data-len]").forEach(b => b.onclick = () => { st.length = +b.dataset.len; if (st.length === 1 && st.keepPos === "1") st.keepPos = ""; sync(); });
   act.querySelectorAll("[data-kp]").forEach(b => b.onclick = () => { st.keepPos = st.keepPos === b.dataset.kp ? "" : b.dataset.kp; sync(); });
@@ -692,8 +692,8 @@ function renderSticks(R, surname) {
   const box = $("#slips");
   if (!lastCands.length) { box.innerHTML = `<p class="fine ink">你這樣限，我翻不到筆畫、五行都合的。要留的字換一個，不要的字少寫幾個，再叫我挑。</p>`; return; }
   const best = lastCands.filter(c => !c.own).reduce((a, c) => (!a || c.score > a.score ? c : a), null);
-  box.innerHTML = lastCands.map((c, i) => `<button type="button" class="stick${c.own ? " own" : ""}${c === best ? " top" : ""}" data-i="${i}" style="--i:${i}" aria-label="${esc(c.name)}，${c.grade}${c === best ? "，這支最好" : ""}${c.own ? "，你帶來的" : ""}">
-      <span class="sk-g">${c.grade}</span><span class="sk-n vt">${esc(c.given)}</span><span class="sk-s">${c.own ? "你的" : c === best ? "這支好" : ""}</span></button>`).join("")
+  box.innerHTML = lastCands.map((c, i) => `<button type="button" class="stick${c.own ? " own" : ""}${c === best ? " best" : ""}" data-i="${i}" style="--i:${i}" aria-label="${esc(c.name)}，${c.grade}${c === best ? "，這支最好" : ""}${c.own ? "，你帶來的" : ""}">
+      <span class="sk-g">${c.grade}</span><span class="sk-n vt">${esc(c.given)}</span><span class="sk-s">${c.own ? "你的" : ""}</span></button>`).join("")
     + `<p class="sticks-tip">點一支籤，跟${R ? "原來的名字比比看" : "看整張批命"}</p>`;
   box.querySelectorAll(".stick").forEach(b => b.onclick = () => { sfx("paper"); showCompare(R, surname, lastCands[+b.dataset.i]); });
   if (!reduced) lastCands.forEach((_, i) => setTimeout(() => sfx("deal"), 120 + i * 90));

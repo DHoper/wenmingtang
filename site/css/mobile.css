@@ -130,7 +130,7 @@
 .sk-g { align-self: start; margin-top: 5px; font: 900 14px/1 var(--song); color: #fff3d6; text-shadow: 0 1px 0 #5a0000; letter-spacing: .05em; }
 .sk-n { font: 900 28px/1.15 var(--song); color: #2a1408; }
 .sk-s { align-self: end; margin-bottom: 8px; font: 700 13px/1.2 var(--kai); color: #5a3a1e; }
-.stick.top::after { content: "最好"; position: absolute; right: -8px; bottom: 34px; width: 36px; height: 36px; display: grid; place-items: center; transform: rotate(-10deg); background: url(../assets/props/seal.webp) center / contain no-repeat; font: 900 11px/1 var(--song); color: #b01e14; }
+.stick.best::after { content: "最好"; position: absolute; right: -8px; bottom: 34px; width: 36px; height: 36px; display: grid; place-items: center; transform: rotate(-10deg); background: url(../assets/props/seal.webp) center / contain no-repeat; font: 900 11px/1 var(--song); color: #b01e14; }
 .stick.own { background: var(--paper) 0 0 / 160px; border-style: solid; border-width: 8px; border-image: url(../assets/ui/slip-frame.webp) 118 / 8px stretch; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, .45)); }
 .stick.own .sk-g { color: var(--vermilion); text-shadow: none; }
 .own { display: grid; gap: 8px; padding: 4px 6px 6px; color: var(--ink); }
@@ -336,3 +336,44 @@
 .share-pic.og { min-height: 0; }
 #shTip { margin: -2px 0 2px; }
 .share .btn.main:disabled { filter: saturate(.4) brightness(.85); cursor: progress; }
+
+/* ───── 11-27 畫面審查修正 ───── */
+/* 右上木牌不斷行 */
+.chip { white-space: nowrap; }
+@media (max-width: 375px) { .chip { font-size: 13px; letter-spacing: 0; } }
+/* 竹籤籤腳字不凸出竹身 */
+.sk-s { white-space: nowrap; font-size: 12px; letter-spacing: 0; }
+/* 自己想的名字：按鈕不撐出紙框 */
+.own-row input { flex: 1 1 0; width: 0; }
+.own-row .opt, .own-row button { flex: none; }
+/* 兩名對照表、白話、總評說明：換成有筆墨感的明體；數字粗宋等寬 */
+.cmp { font-family: var(--song); }
+.cmp td { font-variant-numeric: lining-nums tabular-nums; }
+.bai, .hero .hlp, .qa-a { font-family: var(--ming); }
+.qa-a { letter-spacing: 0; font-feature-settings: "halt"; }
+/* 文字不要只剩一個字掉到下一行 */
+.cond-sum, .prop .s, .fine, .rsay, .birth .note, .ask-sub, .pic-tip { text-wrap: balance; }
+/* 選單選中：改成字底下一筆朱紅 */
+.pk-o[aria-pressed=true]::before { content: none; }
+.pk-o[aria-pressed=true] b { padding-bottom: 7px; background: url(../assets/ui/stroke-red.webp) center bottom / 100% 6px no-repeat; }
+/* 都看／只看批語／只看白話：選中的換紅木牌，一眼看得出在哪一頁 */
+.mode button[aria-pressed=true] { border-image: url(../assets/ui/btn-red.webp) 40 fill / 8px 10px stretch !important; background: none; color: #fff3d6; }
+/* 批語紙卡邊框：重複貼，不拉長變形 */
+.reading { border-image-repeat: round; }
+/* 窄螢幕八字批語不在詞中間斷 */
+@media (max-width: 420px) { .pi { letter-spacing: .02em; } }
+/* 紅條右下的印收進紅條 */
+.seal { right: 4px; }
+/* 分享面板的「收」印收進框內 */
+.share-x { right: 8px; top: 6px; }
+/* 追問框用紙紋，不像原生方塊 */
+.ask textarea { background: var(--paper) 0 0 / 260px; }
+/* 神力耗盡、分享的遮罩加深 */
+.share { background: rgba(5, 7, 12, .86); }
+/* 複姓選項置中 */
+.sheet .fine + .opts { justify-content: center; }
+.sheet .fine:has(+ .opts) { text-align: center; }
+.cond-sum .seg { white-space: nowrap; }
+.paper-text .n { left: calc(100% + .66em); }
+.kp-grp { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+@media (max-width: 480px) { .kp-grp { flex-basis: 100%; } }

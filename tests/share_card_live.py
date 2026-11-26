@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from fake_worker
 out = sys.argv[1]; os.makedirs(out, exist_ok=True)
 
 def route(r):
-    if r.request.url.endswith("/card"):
+    if r.request.url.split("?")[0].endswith("/card"):
         return r.continue_()  # 存圖走線上
     if r.request.method == "OPTIONS":
         return r.fulfill(status=204, headers={"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*"})
