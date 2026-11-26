@@ -101,12 +101,15 @@ export function evaluate(p) {
   return { sInfo, gInfo, wuge, sancai, rel, parts, score, grade: gradeOf(score), match, zodiac };
 }
 
+// 老先生講數字用中文（一到九十九）
+const CN = "〇一二三四五六七八九";
+const cn = n => n < 10 ? CN[n] : n < 20 ? "十" + (n % 10 ? CN[n % 10] : "") : CN[Math.floor(n / 10)] + "十" + (n % 10 ? CN[n % 10] : "");
 /** 是否主動建議改名 */
 export function shouldRename(ev) {
   const why = [];
   if (["中下", "下"].includes(ev.grade)) why.push("整個名字合起來看偏弱");
-  if (ev.wuge.ren.lv <= -1) why.push(`人格${ev.wuge.ren.n}畫是${ev.wuge.ren.level}的數`);
-  if (ev.wuge.zong.lv <= -1) why.push(`總格${ev.wuge.zong.n}畫是${ev.wuge.zong.level}的數`);
+  if (ev.wuge.ren.lv <= -1) why.push(`人格${cn(ev.wuge.ren.n)}畫是${ev.wuge.ren.level}的數`);
+  if (ev.wuge.zong.lv <= -1) why.push(`總格${cn(ev.wuge.zong.n)}畫是${ev.wuge.zong.level}的數`);
   if (ev.sancai.v <= -0.6) why.push(`三才${ev.sancai.key}配得不順`);
   if (ev.match) {
     const renJi = ev.match.grids[0].tag === "忌神";

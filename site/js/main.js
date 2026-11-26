@@ -445,7 +445,7 @@ function gridTiles(R, pending, asButtons = false) {
     return `<${tag} ${asButtons ? 'type="button"' : ""} class="g${pending ? " pending" : ""}" data-k="${k}" aria-label="${GRID_INFO[k].label} ${g.n} 畫，${g.el}，${g.level}"><span class="k">${GRID_INFO[k].label}</span><span class="num">${g.n}</span><span class="el e-${g.el}">${g.el}</span><span class="lv ${cls}">${LV_SHORT[g.level] || g.level}</span></${tag}>`;
   }).join("");
 }
-const cheng = v => { const t = Math.round(v * 10); return v < 0.05 ? "幾乎沒有" : t < 1 ? "不到一成" : `約${han(t)}成`; };
+const cheng = v => { const t = Math.round(v * 10); return v < 0.05 ? "幾乎沒有" : t < 1 ? "不到一成" : `約${t === 2 ? "兩" : han(t)}成`; };
 function baziBlock(b) {
   const max = Math.max(...Object.values(b.share));
   const colors = { 木: "#3f7a4b", 火: "#b8392a", 土: "#9a7434", 金: "#c9a13b", 水: "#2f5f8c" };

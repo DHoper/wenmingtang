@@ -228,7 +228,7 @@ export function reading(p) {
         `取${b.yong}為用${b.xi.length ? `，${b.xi.join("、")}為喜` : ""}${b.ji.length ? `，忌${b.ji.join("、")}` : ""}。`,
         renTag === "用神" ? "名之人格正合用神，數氣相投。" : renTag === "喜神" ? "名之人格得喜神之氣，可。" : renTag === "忌神" ? "名之人格反犯忌神，宜易之。" : "名之人格為閒神，無大礙。",
       ],
-      bai: `你生那天的天干是${b.dmGan}，屬${b.dm}，這就是你本人。八字裡幫你的力量大概${han(Math.max(1, Math.round(b.support * 10)))}成，算${b.strength}。` +
+      bai: `你生那天的天干是${b.dmGan}，屬${b.dm}，這就是你本人。八字裡幫你的力量大概${(n => n === 2 ? "兩" : han(n))(Math.max(1, Math.round(b.support * 10)))}成，算${b.strength}。` +
         `所以你最欠、最要的是${b.yong}，這叫用神${b.xi.length ? `；${b.xi.join("、")}也幫得到你` : ""}${b.ji.length ? `；${b.ji.join("、")}跟你不合，要避開` : ""}。` +
         `再看名字：${gl}；用的字，${cl}。` +
         (renTag === "忌神" ? "人格偏偏落在忌神，等於每天被人叫著跟你不合的五行。名字最該改的，就是這裡。" :

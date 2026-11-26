@@ -122,7 +122,7 @@ export function computeBazi(input, L) {
 
   const reasons = [];
   reasons.push(`你是${dmGan}${dm}，生在${monthZhi}月，${deLing ? "正當令，氣旺" : "不當令，氣較弱"}；${deDi ? "地支有根" : "地支沒根"}；${deShi ? "天干有人幫" : "天干較少人幫"}。`);
-  reasons.push(`生你、幫你的印跟比劫，大概佔了${["不到一", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"][Math.round(support * 10)]}成。`);
+  reasons.push(`生你、幫你的印跟比劫，大概佔了${["不到一", "一", "兩", "三", "四", "五", "六", "七", "八", "九", "十"][Math.round(support * 10)]}成。`);
 
   let strength, yong, xi = [], ji = [], pattern = "扶抑";
   const opp = ["食傷", "財", "官殺"].sort((a, b) => byGod[b] - byGod[a]);

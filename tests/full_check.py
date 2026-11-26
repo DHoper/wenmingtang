@@ -61,6 +61,7 @@ def run(size):
         ctx = b.new_context(viewport={"width": w, "height": h}, device_scale_factor=2, has_touch=w < 900, locale="zh-TW", timezone_id="Asia/Taipei")
         ctx.grant_permissions(["clipboard-read", "clipboard-write"])
         pg = ctx.new_page(); errs = []
+        pg.route("https://wenming-ai.oracle-tarot.workers.dev/**", lambda r: r.abort())
         pg.on("pageerror", lambda e: errs.append("頁面錯誤：" + str(e)))
         pg.on("console", lambda m: errs.append("主控台：" + m.text) if m.type == "error" else None)
         n = [0]
@@ -89,6 +90,8 @@ def run(size):
         shot("birth_solar", "生辰帖：國曆 1961/9/27 10 點", 900)
         pg.click("#tY"); pg.wait_for_selector(".picker.on"); shot("birth_picker", "生辰帖：點「年」跳出宣紙選單", 500)
         pg.click('.pk-o[data-v="1961"]'); pg.wait_for_timeout(400)
+        pg.click("#tH"); pg.wait_for_selector(".picker.on"); shot("birth_picker_hour", "生辰帖：時辰選單", 500)
+        pg.click('.pk-o[data-v="10"]'); pg.wait_for_timeout(400)
         pg.click("#calBtn"); shot("birth_lunar", "生辰帖：切換農曆", 900)
         pg.click("#calBtn"); pg.wait_for_timeout(500)
         pg.select_option("#bY", "1961"); pg.select_option("#bM", "9"); pg.select_option("#bD", "27"); pg.select_option("#bH", "10"); pg.wait_for_timeout(300)
@@ -97,6 +100,7 @@ def run(size):
         pg.click("#goCount"); shot("count", "數筆畫進行中", 2200)
         pg.wait_for_selector(".hero", timeout=40000); shot("reading_top", "批命：最上面（評等、五格）", 1200)
         pg.evaluate("document.querySelector('#grid5').scrollIntoView({block:'start'})"); shot("reading_grid", "批命：五格", 500)
+        pg.evaluate("document.querySelector('#askBox') && !document.querySelector('#askBox').hidden && document.querySelector('#askBox').scrollIntoView({block:'start'})"); shot("reading_ask", "批命：叩問先生區", 500)
         scroll_sheet(.3); shot("reading_mid", "批命：中段", 500)
         scroll_sheet(.6); shot("reading_bazi", "批命：八字段落附近", 500)
         scroll_sheet(1); shot("reading_end", "批命：最後（總結與按鈕）", 500)
