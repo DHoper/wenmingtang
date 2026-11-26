@@ -295,3 +295,38 @@
 .pen input::placeholder { letter-spacing: .08em; }
 /* 年份選單：分隔線改成淡朱細線 */
 .pk-year .pk-o + .pk-o { background: url(../assets/ui/stroke-red.webp) center top / 84% 2px no-repeat !important; }
+
+/* 先生親口批：等 AI 寫的時候 */
+.ink-wait { display: inline-block; font: 400 15px/1.8 var(--kai); color: rgba(90, 66, 50, .65); animation: inkWait 1.6s ease-in-out infinite; }
+@keyframes inkWait { 50% { opacity: .35; } }
+.hero .hlp .ink-wait { color: rgba(74, 53, 38, .6); }
+.ai-note { margin: 0; padding: 4px 10px; text-align: center; font: 400 14px/1.6 var(--kai); color: #f3e3c4; text-shadow: var(--carve); }
+.ai-note[hidden] { display: none; }
+.ask-sub { margin: -4px 0 0; font: 400 14px/1.5 var(--kai); color: var(--ink-2); }
+
+/* 追問先生：標題右邊三支籤表示還能問幾次；字數在框內右下角，只在打字時出現 */
+.ask-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ask-left { display: flex; align-items: center; gap: 5px; }
+.ask-left span { margin-right: 6px; font: 400 14px/1 var(--kai); color: var(--ink-2); white-space: nowrap; }
+.ask-left i { width: 7px; height: 34px; background: url(../assets/ui/stick.webp) center / 100% 100% no-repeat; transform: rotate(6deg); transition: opacity .35s var(--ease), filter .35s var(--ease); }
+.ask-left i:nth-of-type(2) { transform: rotate(-2deg); }
+.ask-left i:nth-of-type(3) { transform: rotate(-8deg); }
+.ask-left i.used { opacity: .28; filter: grayscale(1); }
+.ask-sub { margin: -2px 0 2px; }
+.ask-in { position: relative; }
+.ask-in textarea { display: block; padding-bottom: 22px; }
+.ask-count { position: absolute; right: 16px; bottom: 13px; font: 400 13px/1 var(--kai); color: rgba(90, 66, 50, .62); pointer-events: none; }
+.ask-count[hidden] { display: none; }
+.ask-count.over { color: var(--vermilion); font-weight: 700; }
+.ask .btn.ask-go { width: 100%; min-height: 50px; font-size: 18px; }
+
+/* 分享長圖：面板裡只露上半截，點開可以捲著看整張 */
+.pic-zoom.long { position: relative; max-height: min(44dvh, 400px); overflow: hidden; }
+.pic-zoom.long img { width: 100%; height: auto; aspect-ratio: auto; max-height: none; }
+.pic-zoom.long::after { content: ""; position: absolute; inset: auto 0 0; height: 64px; background: url(../assets/ui/paper.webp) center / 260px; -webkit-mask: linear-gradient(transparent, #000); mask: linear-gradient(transparent, #000); }
+.zoom.long { display: block; overflow-y: auto; padding: 14px 12px 40px; -webkit-overflow-scrolling: touch; }
+.zoom.long img { display: block; width: 100%; max-width: 560px; max-height: none; margin: 0 auto; }
+.zoom.long p { position: sticky; top: 0; z-index: 1; margin: -14px -12px 12px; padding: 10px; text-align: center; background: rgba(5, 7, 12, .92); }
+
+/* 五格數字：跟匾額、名字同一套粗宋體，數字等寬對齊 */
+.g .num { font-family: var(--song); font-weight: 900; font-variant-numeric: lining-nums tabular-nums; letter-spacing: -.01em; }

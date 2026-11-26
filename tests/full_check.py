@@ -4,6 +4,7 @@
 """
 import sys, os, json
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from fake_worker import fake_worker
 
 U = os.environ.get("WM_URL", "http://127.0.0.1:8765/")
 out = sys.argv[1]
@@ -61,7 +62,7 @@ def run(size):
         ctx = b.new_context(viewport={"width": w, "height": h}, device_scale_factor=2, has_touch=w < 900, locale="zh-TW", timezone_id="Asia/Taipei")
         ctx.grant_permissions(["clipboard-read", "clipboard-write"])
         pg = ctx.new_page(); errs = []
-        pg.route("https://wenming-ai.oracle-tarot.workers.dev/**", lambda r: r.abort())
+        fake_worker(pg)
         pg.on("pageerror", lambda e: errs.append("頁面錯誤：" + str(e)))
         pg.on("console", lambda m: errs.append("主控台：" + m.text) if m.type == "error" else None)
         n = [0]

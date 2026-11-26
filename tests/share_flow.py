@@ -1,13 +1,14 @@
 """分享面板與朋友連結截圖：python tests/share_flow.py 輸出資料夾"""
 import sys, os
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(__file__)); from fake_worker import fake_worker
 out = sys.argv[1]; os.makedirs(out, exist_ok=True)
 U = "http://127.0.0.1:8765/"
 with sync_playwright() as p:
     b = p.chromium.launch()
     for w, h in [(390, 844), (1366, 800)]:
         ctx = b.new_context(viewport={"width": w, "height": h}, device_scale_factor=2, has_touch=w < 900)
-        ctx.grant_permissions(["clipboard-read", "clipboard-write"])
+        ctx.grant_permissions(["clipboard-read", "clipboard-write"]); fake_worker(ctx)
         pg = ctx.new_page(); errs = []
         pg.on("pageerror", lambda e: errs.append(str(e))); pg.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
         pg.goto(U); pg.wait_for_selector("#enter:not([disabled])"); pg.click("#enter"); pg.wait_for_timeout(900)

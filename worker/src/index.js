@@ -1,7 +1,7 @@
 // 問名堂「叩問先生」中繼站（Cloudflare Worker）
 // 網頁只送「批命依據」（basis）與客人的一句叩問（question），提示詞在這裡組好再轉給 DeepSeek，串流回傳。
 // 金鑰放在 Worker 機密：npx wrangler secret put DEEPSEEK_API_KEY（不寫進任何檔案）。
-// 每日次數：每個人（以 IP 雜湊計）USER_PER_DAY 次、全站 SITE_PER_DAY 次，臺灣時間零點重算，記在 KV（LIMITS）。
+// 每日次數：每個人（以 IP 雜湊計）每天 USER_READINGS 張批命、USER_ASKS 次追問，全站 SITE_CALLS 次，臺灣時間零點重算，記在 KV（LIMITS）。
 import { messagesFor, cleanQuestion, LIMITS } from "../../site/js/ai-prompt.js";
 
 const DEFAULT_ORIGINS = "https://gxgemini777.github.io,https://dhoper.github.io,http://127.0.0.1:8765,http://localhost:8765";
@@ -26,7 +26,6 @@ export default {
     if (req.method !== "POST" || !ok) return json({ error: "forbidden" }, 403, cors);
     if (!env.DEEPSEEK_API_KEY) return json({ error: "not_configured" }, 500, cors);
 
-    const userMax = +(env.USER_PER_DAY || LIMITS.USER_PER_DAY), siteMax = +(env.SITE_PER_DAY || LIMITS.SITE_PER_DAY);
     const ip = req.headers.get("CF-Connecting-IP") || "local";
     const now = Date.now();
     const recent = (burst.get(ip) || []).filter(t => now - t < 60e3);
@@ -34,26 +33,31 @@ export default {
     let body;
     try { body = await req.json(); } catch (_) { return json({ error: "bad_json" }, 400, cors); }
     const basis = body && body.basis;
-    if (!basis || typeof basis !== "object" || Array.isArray(basis) || JSON.stringify(basis).length > 9000) return json({ error: "bad_request" }, 400, cors);
+    if (!basis || typeof basis !== "object" || Array.isArray(basis) || JSON.stringify(basis).length > 12000) return json({ error: "bad_request" }, 400, cors);
+    const mode = body.mode === "reading" ? "reading" : "ask";
     const rawQ = typeof body.question === "string" ? body.question : "";
     if ([...rawQ.trim()].length > LIMITS.QUESTION_MAX) return json({ error: "too_long", max: LIMITS.QUESTION_MAX }, 400, cors);
-    const question = cleanQuestion(rawQ);
+    const question = mode === "ask" ? cleanQuestion(rawQ) : "";
+    if (mode === "ask" && !question) return json({ error: "empty" }, 400, cors);
 
-    // 每日次數（KV 沒綁就只靠前端與短時間保護）
-    const day = twDay(), userKey = `u:${day}:${await sha(ip + (env.SALT || "wenming"))}`, siteKey = `s:${day}`;
+    // 每日次數：每個人的批命、追問分開算；全站算總呼叫數。KV 沒綁就只靠前端與短時間保護
+    const userMax = mode === "reading" ? +(env.USER_READINGS || LIMITS.USER_READINGS) : +(env.USER_ASKS || LIMITS.USER_ASKS);
+    const siteMax = +(env.SITE_CALLS || LIMITS.SITE_CALLS);
+    const day = twDay(), who = await sha(ip + (env.SALT || "wenming"));
+    const userKey = `u:${day}:${who}:${mode === "reading" ? "r" : "a"}`, siteKey = `s:${day}`;
     let userUsed = 0, siteUsed = 0;
     if (env.LIMITS) {
       [userUsed, siteUsed] = (await Promise.all([env.LIMITS.get(userKey), env.LIMITS.get(siteKey)])).map(v => +v || 0);
       if (siteUsed >= siteMax) return json({ error: "site_limit", max: siteMax }, 429, cors);
-      if (userUsed >= userMax) return json({ error: "user_limit", max: userMax }, 429, cors);
+      if (userUsed >= userMax) return json({ error: mode === "reading" ? "reading_limit" : "user_limit", max: userMax }, 429, cors);
     }
-    if (recent.length >= 3) return json({ error: "too_fast" }, 429, cors);
+    if (recent.length >= 4) return json({ error: "too_fast" }, 429, cors);
     recent.push(now); burst.set(ip, recent); if (burst.size > 5000) burst.clear();
 
     const up = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.DEEPSEEK_API_KEY}` },
-      body: JSON.stringify({ model: env.MODEL || "deepseek-chat", messages: messagesFor(basis, question), stream: true, max_tokens: question ? 420 : 650, temperature: 0.85 }),
+      body: JSON.stringify({ model: env.MODEL || "deepseek-chat", messages: messagesFor(basis, question, mode), stream: true, max_tokens: mode === "reading" ? 2200 : 420, temperature: 0.85 }),
     });
     if (!up.ok || !up.body) return json({ error: "upstream", status: up.status }, 502, cors);
     // DeepSeek 有回應才扣次數

@@ -11,10 +11,12 @@
 - **正式網址**：https://dhoper.github.io/wenmingtang/ （repo `DHoper/wenmingtang`，推 main 後 GitHub Actions 自動把 site/ 發布；設定在 `.github/workflows/pages.yml`）。
 - **預覽**：claude.ai artifact 版本 12。**每改完一輪就要更新預覽**（業主看的是預覽，11-26 曾因沒更新被罵「講多久了還沒好」）。
 - **手機版重新設計**（設計審查 28 項全做）：固定舞台構圖、窗框頭像、頂列「返」牌、生辰帖（毛筆字＋宣紙選單，不用原生下拉）、竹籤候選名、條件抽屜、宣紙結果卡、兩名對照、分享面板、上回批命。樣式在 `css/mobile.css`，動態在 `css/motion.css`（一條減速曲線、不彈跳；操作區用 FLIP 跟舞台同步滑動）。
-- **叩問先生（AI）**：人設與規矩在 `js/ai-prompt.js`（網頁與 Worker 共用），限制每人每天 3 次、全站 200 次、50 字。超過跳「神力耗盡」。**規格在等業主審**（桌面 `問名堂_AI叩問規格_待審.pdf`），審過才：
-  1. `cd worker && npx wrangler kv namespace create LIMITS`，把 id 填進 wrangler.toml 的 `[[kv_namespaces]] binding = "LIMITS"`；
-  2. `npx wrangler deploy`（線上目前是舊版 Worker，沒有每日上限）；
-  3. `site/js/config.js` 的 `AI_ENDPOINT` 填回 Worker 網址，推上 GitHub。
+- **先生親口批（AI）**（11-26 業主決定）：批命頁的**所有評語都由 AI 寫**，引擎算出來的五格、白話只當 AI 的依據與備援。數字（評等、五格、三才、八字）照引擎馬上顯示，評語位置先寫「先生正在寫……」，AI 依【總評】【天格】…【總結】一段一段串流寫進去（`site/js/ai.js` 的 `aiReadingFull`、`main.js` 的 `runAIReading`）。AI 失敗或次數用完，換回引擎的句子。
+  - 批完是「追問先生」：每張批命追問 3 次（標題右邊三支籤，問一次淡一支），每次 50 字內、回答 240 字內。
+  - 次數（`js/ai-prompt.js` 的 LIMITS，Worker 的 wrangler.toml vars 要同步）：每人每天 3 張 AI 批命、追問 9 次；全站每天 400 次。用完跳「神力耗盡」（批命用完／追問用完／全站用完／這張問完了，四種文案）。
+  - 看過的 AI 批命存在瀏覽器（`wenming:aiCache`，留 20 張），重看不扣次數。
+  - Worker：`worker/src/index.js`，mode = reading | ask，已部署。`node worker/try_reading.mjs` 本機試一整張（會花 DeepSeek）。
+  - **測試一律用假 Worker**（`tests/fake_worker.py`），不然會吃掉本機 IP 的線上次數；吃到了用 `npx wrangler kv key list/delete --namespace-id b4181e77e0c44e28adeeeeca175e77a2 --remote` 清掉今天 `u:` 開頭的鍵。
 - **文字**：審查代理抓 61 句 AI 腔已改；五格白話講出是哪幾個字幾畫。新寫任何字先對照 `docs/voice.md`。
 - **素材**：Recraft 這次共用約 115 點（表情 2 張、筆墨一筆、窗框、竹籤）。
 - **測試**：`python tests/full_check.py <資料夾> 390x844 360x740 768x1024 1366x768 1920x1080`（33 個步驟、自動檢查＋截圖），`python tests/report_pdf.py <資料夾> <pdf>` 產報告；`tests/jank.py`、`tests/filmstrip.py` 查動畫抖動；`tests/ask_ui.py` 查叩問區；`node worker/review.mjs` 產生 AI 實際問答（會花 DeepSeek 次數）。
@@ -31,10 +33,12 @@
 8. **「幫小孩取名」不是常用功能，要小、不能和「看名字」平起平坐**（11-26）。
 9. **要有分享功能**，參考外面測驗網站的做法（11-26 已做，見下）。
 10. 業主授權自行查證、做決定（「去做，不要問我」），但品質要專業。
-11. 台詞：業主點名「生辰帶了嗎」突兀、「男命還女命？男女算法不一樣」超 AI。句子短、口語、不解釋原理，不用「老夫」武俠腔（11-26 已換）。
+11. 台詞：業主點名「生辰帶了嗎」突兀、「男命還女命？男女算法不一樣」超 AI、「生日方便給嗎」不像老先生（客服腔）。句子短、台灣老一輩口語（例：「幾年次的？」），不解釋原理，不用「老夫」武俠腔。
 12. 批命最後要有**總結**（11-26 已做，規則式 `summarySection()`）。
 13. 桌機招牌那列不可以有橫向捲軸（11-26 已改成依欄寬縮放）。
 14. 業主之後用桌面 VS Code 的 Claude 接手修改（就是這個本機專案），雲端那邊不再改。
+15. 分享＝**圖片＋連結**一起出去；分享圖是**直式長圖**（`share.js` 的 `drawLongCard`），要放大部分完整評語（各格文言批語＋先生白話、先生總說、QR）。不放八字、生肖（會透露生辰）。
+16. 五格數字用粗宋體（跟匾額、名字一致），不要楷書數字。
 
 ## 二、現況
 ### 檔案（site/）

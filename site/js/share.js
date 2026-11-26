@@ -182,6 +182,7 @@ export function keyLines(R) {
   return [["本性", "人格", "ren"], ["出外", "外格", "wai"], ["晚運", "總格", "zong"]].map(([label, grid, k]) => ({ label, grid, n: R.wuge[k].n, lv: R.wuge[k].lv, lvName: LV[R.wuge[k].lv], text: first(R.wuge[k].text) }));
 }
 export function summaryLine(R) {
+  if (R.aiParts && R.aiParts.summary) return R.aiParts.summary;
   const s = R.sections.find(x => x.key === "summary");
   return s ? s.bai.replace(/^總的來講，/, "") : R.headlinePlain;
 }
@@ -288,5 +289,133 @@ export async function drawPostcard(R) {
   if (ok) { ctx.fillText("掃一下，", qx - 18, qy + 40); ctx.fillText("看你的名字", qx - 18, qy + 76); }
   else ctx.fillText("換你，名字拿去給先生看看", rr, qy + 60);
   ctx.textAlign = "left";
+  return cv;
+}
+
+/** 長圖（1080 寬，高度看內容）：一張從頭寫到尾的批命帖。不放八字那段，免得透露生辰。 */
+export async function drawLongCard(R) {
+  const W = 1080, M = 76, IW = W - M * 2;
+  const pose = R.renameAdvised ? "stern" : "approve";
+  const [bg, master, paper, slip, frame, seal, plaque, strokeRed, red] = await Promise.all([
+    "assets/scene/bg.webp", `assets/master/${pose}.webp`, "assets/ui/paper.webp", "assets/ui/slip-frame.webp",
+    "assets/ui/red-frame.webp", "assets/props/seal.webp", "assets/ui/plaque.webp", "assets/ui/stroke-red.webp", "assets/ui/redpaper-light.webp",
+  ].map(img));
+  const ai = R.aiParts || {};
+  const sec = k => R.sections.find(s => s.key === k);
+  const LV = l => ({ 吉多於凶: "半吉", 凶多於吉: "半凶" })[l] || l;
+  const capT = (t, max = 230) => { const a = [...String(t || "")]; if (a.length <= max) return a.join(""); const c = a.slice(0, max).join(""), i = c.lastIndexOf("。"); return i > max * .5 ? c.slice(0, i + 1) : c + "……"; };
+  const say = k => capT(ai[k] || sec(k)?.bai || "", 360);
+  const verse = k => (sec(k)?.pi || []).join("");
+  const items = [];
+  for (const k of GRID_KEYS) items.push({ label: GRID_INFO[k].label, sub: `${cnum(R.wuge[k].n)}畫・${R.wuge[k].el}・${LV(R.wuge[k].level)}`, verse: verse(k), text: say(k) });
+  if (sec("sancai")) items.push({ label: "三才", sub: `${[...R.sancai.key].join("・")}・${R.sancai.level}`, verse: verse("sancai"), text: say("sancai") });
+  if (sec("outer")) items.push({ label: "出外與晚運", sub: "", verse: verse("outer"), text: say("outer") });
+  if (sec("topic")) items.push({ label: "所問", sub: (sec("topic").title.split("：")[1] || "綜合"), verse: verse("topic"), text: say("topic") });
+  if (sec("rename")) items.push({ label: "改名", sub: R.renameAdvised ? "要改" : "不必改", verse: verse("rename"), text: say("rename") });
+  const hlPlain = capT(ai.headline || R.headlinePlain, 90), sum = capT(summaryLine(R), 260);
+  const allText = R.name + R.grade + R.headline + hlPlain + sum + items.map(x => x.label + x.sub + x.verse + x.text).join("") + "問名堂乾坤造批天人地外總格先生總說掃一下看你的名字夜裡的廟口把名字交給算命先生";
+  await Promise.all([document.fonts.load(`900 100px ${SONG}`, allText), document.fonts.load(`400 40px ${KAI}`, allText)]).catch(() => {});
+  const link = shareLink(R), urlText = siteURL().replace(/^https?:\/\//, "").replace(/\/$/, "");
+
+  async function render(ctx, H) {
+    ctx.textBaseline = "middle"; ctx.textAlign = "left";
+    tile(ctx, paper, 0, 0, W, H, 360);
+    nine(ctx, slip, 118, 0, 0, W, H, 44);
+    // 上：廟埕夜景與先生
+    const bx = 56, by = 56, bw = W - 112, bh = 620;
+    ctx.save(); ctx.beginPath(); ctx.rect(bx, by, bw, bh); ctx.clip();
+    const s = Math.max(bw / bg.naturalWidth, bh / bg.naturalHeight);
+    ctx.drawImage(bg, bx + (bw - bg.naturalWidth * s) / 2, by - 30, bg.naturalWidth * s, bg.naturalHeight * s);
+    const gd = ctx.createLinearGradient(0, by, 0, by + bh); gd.addColorStop(0, "rgba(10,12,20,.15)"); gd.addColorStop(.7, "rgba(10,12,20,.2)"); gd.addColorStop(1, "rgba(10,12,20,.7)");
+    ctx.fillStyle = gd; ctx.fillRect(bx, by, bw, bh);
+    const mw = bw * .8, mh = mw * master.naturalHeight / master.naturalWidth;
+    ctx.drawImage(master, bx + (bw - mw) / 2, by + 170, mw, mh);
+    ctx.restore();
+    nine(ctx, frame, 56, bx - 10, by - 10, bw + 20, bh + 20, 18, true);
+    const pw = 380, ph = pw * plaque.naturalHeight / plaque.naturalWidth, ppx = (W - pw) / 2, ppy = by + 26;
+    shadow(ctx, () => ctx.drawImage(plaque, ppx, ppy, pw, ph));
+    ctx.textAlign = "center"; ctx.font = `900 58px ${SONG}`; ctx.fillStyle = "#f3d48c";
+    drawSpaced(ctx, "問名堂", W / 2, ppy + ph / 2 + 2, 20);
+    ctx.textAlign = "left";
+    // 名字與評等朱印
+    let y = by + bh + 110;
+    const nameStr = [...R.name].join(" ");
+    let fs = 118; ctx.font = `900 ${fs}px ${SONG}`;
+    while (ctx.measureText(nameStr).width > IW - 250 && fs > 64) { fs -= 4; ctx.font = `900 ${fs}px ${SONG}`; }
+    ctx.fillStyle = "#1c0f08"; ctx.fillText(nameStr, M, y);
+    ctx.font = `400 30px ${KAI}`; ctx.fillStyle = "#6b5443";
+    ctx.fillText(`${R.gender === "f" ? "坤造" : "乾造"}・問名堂批`, M + 4, y + 84);
+    ctx.save(); ctx.translate(W - M - 100, y + 30); ctx.rotate(-0.1);
+    ctx.drawImage(seal, -100, -100, 200, 200);
+    ctx.textAlign = "center"; ctx.fillStyle = "#a8231a"; ctx.font = `900 ${R.grade.length > 1 ? 66 : 92}px ${SONG}`;
+    if (R.grade.length > 1) { ctx.fillText(R.grade[0], 0, -32); ctx.fillText(R.grade.slice(1), 0, 40); } else ctx.fillText(R.grade, 0, 4);
+    ctx.restore();
+    // 批語（直接用朱線帶起）與總評
+    y += 170;
+    ctx.font = `400 46px ${KAI}`; ctx.fillStyle = "#2a1a10";
+    const hl = [];
+    R.headline.split("，").forEach((c, i, a) => { const piece = c + (i < a.length - 1 ? "，" : "。"), last = hl[hl.length - 1]; if (last && ctx.measureText(last + piece).width <= IW - 40) hl[hl.length - 1] = last + piece; else hl.push(piece); });
+    hl.forEach((t, i) => ctx.fillText(t, M + 30, y + i * 64));
+    ctx.fillStyle = "#a8231a"; ctx.fillRect(M, y - 30, 6, hl.length * 64 - 4);
+    y += hl.length * 64 + 20;
+    ctx.font = `400 33px ${KAI}`; ctx.fillStyle = "#3a2618";
+    wrap(ctx, hlPlain, IW).forEach(t => { ctx.fillText(t, M, y); y += 54; });
+    // 五格小籤
+    y += 30;
+    const gh = 176, gap = 16, gw = (IW - gap * 4) / 5;
+    GRID_KEYS.forEach((k, i) => {
+      const g = R.wuge[k], x = M + i * (gw + gap);
+      shadow(ctx, () => tile(ctx, paper, x + 6, y + 6, gw - 12, gh - 12, 300));
+      nine(ctx, slip, 118, x, y, gw, gh, 16);
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#5a4232"; ctx.font = `700 26px ${SONG}`; ctx.fillText(GRID_INFO[k].label, x + gw / 2, y + 36);
+      ctx.fillStyle = "#2a1a10"; ctx.font = `900 56px ${SONG}`; ctx.fillText(String(g.n), x + gw / 2, y + 88);
+      ctx.font = `900 27px ${SONG}`; ctx.fillStyle = EL_COLOR[g.el][0]; ctx.fillText(g.el, x + gw / 2 - 30, y + 140);
+      ctx.font = `700 25px ${SONG}`; ctx.fillStyle = g.lv >= 1 ? "#2f6b3a" : g.lv <= -1 ? "#a8231a" : "#5a4232"; ctx.fillText(LV(g.level), x + gw / 2 + 18, y + 140);
+      ctx.textAlign = "left";
+    });
+    y += gh + 70;
+    // 先生逐段講
+    for (const it of items) {
+      if (!it.text) continue;
+      ctx.drawImage(strokeRed, M, y - 34, IW, 6);
+      ctx.font = `900 38px ${SONG}`; ctx.fillStyle = "#a8231a"; ctx.fillText(it.label, M, y + 18);
+      const lw = ctx.measureText(it.label).width;
+      if (it.sub) { ctx.font = `700 25px ${SONG}`; ctx.fillStyle = "#6b5443"; ctx.fillText(it.sub, M + lw + 22, y + 22); }
+      y += 78;
+      if (it.verse) {
+        ctx.font = `400 34px ${KAI}`; ctx.fillStyle = "#8a2a1e";
+        const vl = wrap(ctx, it.verse, IW - 34);
+        ctx.fillStyle = "rgba(168,35,26,.55)"; ctx.fillRect(M, y - 24, 4, vl.length * 52 - 4);
+        ctx.fillStyle = "#8a2a1e"; vl.forEach(t => { ctx.fillText(t, M + 24, y); y += 52; });
+        y += 14;
+      }
+      ctx.font = `400 32px ${KAI}`; ctx.fillStyle = "#24160c";
+      wrap(ctx, it.text, IW).forEach(t => { ctx.fillText(t, M, y); y += 54; });
+      y += 46;
+    }
+    // 先生總說：紅紙
+    ctx.font = `400 34px ${KAI}`;
+    const sl = wrap(ctx, sum, IW - 110), rh = 130 + sl.length * 56;
+    shadow(ctx, () => tile(ctx, red, M + 10, y + 10, IW - 20, rh - 20, 300));
+    nine(ctx, frame, 56, M, y, IW, rh, 22);
+    ctx.textAlign = "center"; ctx.font = `900 36px ${SONG}`; ctx.fillStyle = "#ffe3a3";
+    drawSpaced(ctx, "先生總說", W / 2, y + 62, 10);
+    ctx.font = `400 34px ${KAI}`; ctx.fillStyle = "#fff3dc";
+    sl.forEach((t, i) => ctx.fillText(t, W / 2, y + 122 + i * 56));
+    ctx.textAlign = "left";
+    y += rh + 70;
+    // 頁尾：QR code 與網址
+    const qs = 190, qx = W - M - qs;
+    const ok = await drawQR(ctx, link, qx, y, qs, "#2a1408").catch(() => false);
+    ctx.font = `900 42px ${SONG}`; ctx.fillStyle = "#a8231a"; ctx.fillText(ok ? "掃一下，看你的名字" : "換你，名字拿去給先生看看", M, y + 50);
+    ctx.font = `400 30px ${KAI}`; ctx.fillStyle = "#3a2618"; ctx.fillText("夜裡的廟口，把名字交給算命先生。", M, y + 110);
+    ctx.font = `500 24px ${SANS}`; ctx.fillStyle = "#87622c"; ctx.fillText(urlText, M, y + 160);
+    return y + qs + 86;
+  }
+  const probe = document.createElement("canvas"); probe.width = W; probe.height = 12000;
+  const H = Math.ceil(await render(probe.getContext("2d"), 12000));
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  await render(cv.getContext("2d"), H);
   return cv;
 }

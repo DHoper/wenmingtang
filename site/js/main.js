@@ -9,10 +9,11 @@ import { evaluate, GRID_INFO, GRID_KEYS } from "./engine/analyze.js";
 import { suggestNames } from "./engine/rename.js";
 import { PLACES, TOPICS, COMPOUND, AMBIGUOUS } from "./data/misc.js";
 import { slot, preload } from "./assets.js";
-import { aiAvailable, aiAsk, askLeft, LIMITS } from "./ai.js";
+import { aiAvailable, aiAsk, askLeft, LIMITS, aiReadingFull, readingsLeft, readingKey } from "./ai.js";
+import { READING_TAGS } from "./ai-prompt.js";
 import { sfx, soundOn, setSound } from "./sfx.js";
 import { particles, crossfade, typeHTML, riseOnChange, pulse, reduced } from "./fx.js";
-import { drawCard, drawPostcard, cardBlob, shareLink, shareText, noDownload, framed, keyLines, summaryLine } from "./share.js";
+import { drawCard, drawLongCard, cardBlob, shareLink, shareText, noDownload, framed, keyLines, summaryLine } from "./share.js";
 {
 const $ = s => document.querySelector(s);
 const app = $("#app"), say = $("#say"), act = $("#act"), sheet = $("#sheet"), paper = $("#paper"), paperText = $("#paperText"), canvas = $("#canvas"), viewport = $("#viewport");
@@ -225,7 +226,7 @@ async function onNameInput(raw) {
 // ───────── 乾坤 ─────────
 function askGender() {
   setPhase("qiankun"); pose("speak"); setBack(askName);
-  speak(S.mode === "name" ? `<span class="q">男孩還是女孩？</span>還不知道就先選一個。` : `<span class="q">男生還是女生？</span>`);
+  speak(S.mode === "name" ? `<span class="q">男孩還是女孩？</span>還不知道，先挑一個。` : `<span class="q">男生還是女生？</span>`);
   act.innerHTML = `<div class="tokens" role="group" aria-label="乾坤">
       <button type="button" class="tk" data-g="m" aria-pressed="${S.gender === "m"}" aria-label="乾造，男命"><span class="face"><span class="vt">乾造</span></span><span class="s">男命</span></button>
       <button type="button" class="tk" data-g="f" aria-pressed="${S.gender === "f"}" aria-label="坤造，女命"><span class="face"><span class="vt">坤造</span></span><span class="s">女命</span></button>
@@ -248,9 +249,9 @@ async function loadLunar() {
 const afterBirth = () => S.mode === "name" ? doNaming() : askTopic();
 function askBirth() {
   setPhase("birth"); pose("speak"); setBack(askGender);
-  speak(S.mode === "name" ? `小孩<span class="q">幾月幾號生的？</span>還沒生，預產期也可以。` : `<span class="q">生日方便給嗎？</span>有的話算得比較準。`);
+  speak(S.mode === "name" ? `囝仔<span class="q">哪一天生的？</span>還沒出世，預產期也行。` : `<span class="q">幾年次的？</span>生日給我，八字一起看。`);
   act.innerHTML = `<div class="props">
-      <button type="button" class="prop red" id="giveCard"><span class="in"><span class="t">給生日</span><span class="s">八字、生肖也看</span></span></button>
+      <button type="button" class="prop red" id="giveCard"><span class="in"><span class="t">給生日</span><span class="s">八字、生肖一起看</span></span></button>
       <button type="button" class="prop f-wood" id="noCard"><span class="in"><span class="t">先不用</span><span class="s">只看名字筆畫</span></span></button>
     </div>`;
   loadLunar().catch(() => {});
@@ -293,7 +294,7 @@ function openPicker(sel, title, kind = "") {
 // 生辰帖：一張宣紙帖，用毛筆字寫出生日；每一段點了跳出手機自己的滾輪選單
 function openBirthCard() {
   setBack(askBirth);
-  speak(`國曆農曆都可以。<span class="q">幾點生的知道嗎？</span>不知道也沒關係。`);
+  speak(`國曆農曆都行。<span class="q">幾點生的？</span>記不得就空著。`);
   act.innerHTML = `<form class="tie f-slip" id="birthForm" autocomplete="off">
       <div class="tie-head"><span class="tie-t">生辰帖</span><button type="button" class="opt cal" id="calBtn" aria-label="國曆或農曆，點了切換"></button></div>
       <p class="tie-body">
@@ -388,7 +389,7 @@ function openBirthCard() {
 // ───────── 問事（招牌） ─────────
 function askTopic() {
   setPhase("topic"); pose("speak"); setBack(() => S.birth ? openBirthCard() : askBirth());
-  speak(`<span class="q">特別想問哪方面？</span>沒有的話我就整個看。`);
+  speak(`<span class="q">要問哪一項？</span>不講，我就整個看。`);
   act.innerHTML = `<div class="signs" role="group" aria-label="想問的事">${TOPICS.map(([k, t]) => `<button type="button" class="sign" data-t="${k}" aria-pressed="${S.topic === k}"><span class="t vt">${t}</span></button>`).join("")}</div>
     <button type="button" class="btn main wide" id="goCount">請先生算</button>`;
   act.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { S.topic = b.dataset.t; act.querySelectorAll(".sign").forEach(x => x.setAttribute("aria-pressed", x === b)); sfx("chime"); pulse(b, "swing", 1200); });
@@ -403,7 +404,7 @@ async function count() {
   S.R = R;
   const skip = document.createElement("button"); skip.className = "btn ghost skip"; skip.textContent = "不用等，直接看"; skip.onclick = () => { fast = true; skip.remove(); };
   document.body.append(skip);
-  speak(`<span class="q">我來算一下。</span>`);
+  speak(`等一下，<span class="q">我把筆畫排出來。</span>`);
   act.innerHTML = `<div class="grid5" id="grid5">${gridTiles(R, true)}</div><p class="sancai pending" id="scLine" style="opacity:0">三才　${R.sancai.key.split("").join("・")}　${R.sancai.level}</p><div id="countBazi"></div>`;
   renderPaper();
   const cells = [...paperText.querySelectorAll(".c")];
@@ -420,7 +421,7 @@ async function count() {
   $("#scLine").style.opacity = 1;
   await sleep(500);
   if (R.bazi) {
-    speak(`再對一下八字。`);
+    speak(`再合一下八字。`);
     $("#countBazi").innerHTML = baziBlock(R.bazi);
     await sleep(60);
     $("#countBazi").querySelectorAll(".bar b").forEach(b => b.style.width = b.dataset.w);
@@ -477,15 +478,17 @@ function showReading(R, opts = {}) {
     </div>
     <div class="grid5" id="grid5">${gridTiles(R, false, true)}</div>
     <p class="sancai">三才　${R.sancai.key.split("").join("・")}　${R.sancai.level}</p>
-    <div class="ask f-slip" id="askBox" hidden>
-      <p class="ask-h">還有想問的，跟先生講</p>
-      <div class="ask-log" id="askLog"></div>
-      <textarea id="askQ" rows="2" placeholder="例如：這個名字適合自己做生意嗎？" aria-label="想問先生的事"></textarea>
-      <div class="ask-foot"><span id="askMeta"></span><button type="button" class="btn main" id="askGo">請先生細說</button></div>
-    </div>
+    <p class="ai-note" id="aiNote" hidden></p>
     <article class="reading" id="readingBody" data-mode="${view}">
       ${R.sections.map(s => `<section class="sec" id="sec-${s.key}" data-k="${s.key}"><h3>${esc(s.title)}</h3>${s.key === "bazi" ? baziBlock(R.bazi) : ""}<p class="pi">${s.pi.map(l => `<span>${clauses(l)}</span>`).join("")}</p><p class="bai">${prose(s.bai)}</p>${s.reasons ? `<ul class="reasons">${s.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}</section>`).join("")}
     </article>
+    <div class="ask f-slip" id="askBox" hidden>
+      <div class="ask-top"><p class="ask-h">追問先生</p><div class="ask-left" id="askLeft" role="img"></div></div>
+      <p class="ask-sub">批完了，還有想問的，一句一句問。</p>
+      <div class="ask-log" id="askLog"></div>
+      <div class="ask-in"><textarea id="askQ" rows="2" placeholder="例如：這個名字適合自己做生意嗎？" aria-label="想問先生的事"></textarea><span class="ask-count" id="askMeta" aria-live="polite"></span></div>
+      <button type="button" class="btn main ask-go" id="askGo">追問</button>
+    </div>
     <div class="after">
       <button type="button" class="btn ghost" id="shareR">分享</button>
       <button type="button" class="btn ghost" id="again">再看一個</button>
@@ -504,30 +507,74 @@ function showReading(R, opts = {}) {
   $("#toRename").onclick = () => showRename(R);
   $("#again").onclick = () => { S.mode = "read"; S.chars = []; askName(); };
   $("#shareR").onclick = $("#shareTop").onclick = () => openShare(R);
-  aiAvailable().then(ok => { if (ok && $("#askBox")) setupAsk(R); });
+  aiAvailable().then(ok => {
+    if (!$("#readingBody")) return;
+    if (!ok) return;
+    runAIReading(R);
+    setupAsk(R);
+  });
 }
 
-// ───────── 叩問先生（AI） ─────────
+// ───────── 先生親口批（AI 寫全部評語；引擎文字是依據，也是備援） ─────────
+function runAIReading(R) {
+  const slots = READING_TAGS.map(([, k]) => [k, k === "headline" ? act.querySelector(".hero .hlp") : act.querySelector(`#sec-${k} .bai`)]).filter(([, el]) => el);
+  const engine = Object.fromEntries(slots.map(([k, el]) => [k, el.innerHTML]));
+  const cap = (k, t) => { const max = k === "ren" ? LIMITS.SECTION_MAX + 60 : LIMITS.SECTION_MAX; const a = [...t]; if (a.length <= max) return t; const c = a.slice(0, max).join(""); const i = c.lastIndexOf("。"); return i > max * .5 ? c.slice(0, i + 1) : c + "……"; };
+  slots.forEach(([, el]) => { el.classList.add("wait"); el.innerHTML = `<span class="ink-wait">先生正在寫……</span>`; });
+  const fill = (parts, done) => {
+    if (!$("#readingBody")) return;
+    for (const [k, el] of slots) {
+      const t = parts[k];
+      if (t) { el.classList.remove("wait"); el.textContent = cap(k, toTrad(t)); }
+      else if (done) { el.classList.remove("wait"); el.innerHTML = engine[k]; }
+    }
+    if (done) { R.aiParts = Object.fromEntries(Object.entries(parts).map(([k, v]) => [k, toTrad(v)])); }
+  };
+  aiReadingFull(R, fill).catch(e => {
+    fill({}, true);
+    const note = $("#aiNote");
+    if (e.code === "reading_limit" || e.code === "site_limit") {
+      if (note) { note.hidden = false; note.textContent = e.code === "site_limit" ? "今晚來問的人太多，先生歇了。下面先照筆畫排給你看。" : `今天先生已經親口批了 ${LIMITS.USER_READINGS} 張，下面先照筆畫排給你看。`; }
+      limitModal(e.code);
+    } else if (e.code !== "unavailable" && note) { note.hidden = false; note.textContent = "香斷了，先生這回講不下去。下面先照筆畫排給你看。"; }
+  });
+}
+
+// ───────── 追問先生（AI） ─────────
 function setupAsk(R) {
   const box = $("#askBox"), q = $("#askQ"), go = $("#askGo"), meta = $("#askMeta"), log = $("#askLog");
   box.hidden = false;
+  const key = readingKey(R);
+  S.fu = S.fu || {};
+  const fuLeft = () => Math.max(0, LIMITS.FOLLOWUPS - (S.fu[key] || 0));
   const sync = () => {
-    const n = [...q.value.trim()].length, left = askLeft();
-    go.textContent = n ? "叩問" : "請先生細說";
-    meta.innerHTML = n > LIMITS.QUESTION_MAX ? `<em>超過 ${n - LIMITS.QUESTION_MAX} 個字</em>，講重點就好` : `${n}／${LIMITS.QUESTION_MAX} 字・今天還能問 <b>${left}</b> 次`;
-    go.disabled = n > LIMITS.QUESTION_MAX;
+    const n = [...q.value.trim()].length, left = Math.min(askLeft(), fuLeft());
+    go.textContent = "追問";
+    const over = n > LIMITS.QUESTION_MAX;
+    meta.hidden = !n;
+    meta.classList.toggle("over", over);
+    meta.textContent = over ? `多了${num(n - LIMITS.QUESTION_MAX)}個字，講重點就好` : `${num(n)}／${num(LIMITS.QUESTION_MAX)}`;
+    const lb = $("#askLeft");
+    lb.innerHTML = `<span>${left ? "還能問" + (left === 2 ? "兩" : num(left)) + "次" : "這張問完了"}</span>` + Array.from({ length: LIMITS.FOLLOWUPS }, (_, i) => `<i class="${i < left ? "" : "used"}"></i>`).join("");
+    lb.setAttribute("aria-label", `這張還能問 ${left} 次`);
+    go.disabled = over || n === 0 || !left;
+    q.placeholder = left ? "例如：這個名字適合自己做生意嗎？" : "這張問完了，想再問就換一個名字請先生看。";
+    q.readOnly = !left;
   };
   q.oninput = sync; sync();
   go.onclick = async () => {
+    if (fuLeft() <= 0) { limitModal("followup_limit"); return; }
     if (askLeft() <= 0) { limitModal("user_limit"); return; }
     const text = q.value.trim();
+    if (!text) return;
     const item = document.createElement("div"); item.className = "qa";
-    item.innerHTML = `<p class="qa-q">${text ? "你問：" + esc(text) : "請先生把整張再細說一次"}</p><p class="qa-a">先點一炷香……</p>`;
+    item.innerHTML = `<p class="qa-q">你問：${esc(text)}</p><p class="qa-a">先點一炷香……</p>`;
     log.append(item); const out = item.querySelector(".qa-a");
     go.disabled = true; q.disabled = true; pose("speak"); sfx("bell");
     item.scrollIntoView({ behavior: "smooth", block: "nearest" });
     try {
-      await aiAsk(R, text, t => { out.textContent = toTrad(t); });
+      await aiAsk(R, text, t => { out.innerHTML = toTrad(t).split(/\n+/).filter(x => x.trim()).map(x => `<span class="para">${esc(x)}</span>`).join(""); });
+      S.fu[key] = (S.fu[key] || 0) + 1;
       q.value = "";
     } catch (e) {
       if (e.code === "user_limit" || e.code === "site_limit") { item.remove(); limitModal(e.code); }
@@ -542,13 +589,19 @@ function setupAsk(R) {
 // 次數用完：神力耗盡
 function limitModal(kind) {
   const site = kind === "site_limit";
+  const MSG = {
+    reading_limit: [`先生今天已經親口替你批了 ${LIMITS.USER_READINGS} 張，神力耗盡，要歇一下。`, `每個人一天只能請先生親口批 ${LIMITS.USER_READINGS} 張`],
+    user_limit: [`先生今天已經回你 ${LIMITS.USER_ASKS} 個問題，神力耗盡，要歇一下。`, `每個人一天只能追問 ${LIMITS.USER_ASKS} 次`],
+    followup_limit: [`這張已經追問 ${LIMITS.FOLLOWUPS} 次了，先生講得差不多了。`, `每張批命只能追問 ${LIMITS.FOLLOWUPS} 次`],
+    site_limit: ["今晚來問的人太多，廟裡的香都燒完了，先生也要歇了。", `整個網站一天只能請先生講 ${LIMITS.SITE_CALLS} 回`],
+  }[kind] || ["先生要歇一下。", "次數有限"];
   const box = document.createElement("div");
   box.className = "share";
   box.innerHTML = `<div class="share-in f-slip limit" role="alertdialog" aria-modal="true" aria-labelledby="lmH" aria-describedby="lmT">
-      <div class="limit-seal" aria-hidden="true">${site ? "香盡" : "神倦"}</div>
-      <p class="share-h" id="lmH">神力耗盡</p>
-      <p class="limit-t" id="lmT">${site ? "今晚來問的人太多，廟裡的香都燒完了，先生也要歇了。" : `先生今天已經替你看了 ${LIMITS.USER_PER_DAY} 回，神力耗盡，要歇一下。`}</p>
-      <p class="limit-n">這是免費的網站，為了節省成本，${site ? `整個網站一天只能叩問 ${LIMITS.SITE_PER_DAY} 次` : `每個人一天只能叩問 ${LIMITS.USER_PER_DAY} 次`}。批命、擬名照樣可以看，叩問明天再來。</p>
+      <div class="limit-seal" aria-hidden="true">${site ? "香盡" : kind === "followup_limit" ? "話盡" : "神倦"}</div>
+      <p class="share-h" id="lmH">${kind === "followup_limit" ? "這張問完了" : "神力耗盡"}</p>
+      <p class="limit-t" id="lmT">${MSG[0]}</p>
+      <p class="limit-n">這是免費的網站，為了節省成本，${MSG[1]}。${kind === "followup_limit" ? "想再問，換一個名字請先生看。" : "批命、擬名照樣可以看，明天再來請先生親口講。"}</p>
       <button type="button" class="btn main wide" id="lmOk">知道了</button>
     </div>`;
   document.body.append(box);
@@ -668,8 +721,8 @@ async function copy(txt, ok) {
   catch (_) { toast("這裡不給抄，長按文字複製"); }
 }
 function fullText(R) {
-  return [`問名堂批命：${R.name}（${gtxt(R.gender)}）`, `評等：${R.grade}（${R.score}分）　${R.headline}`, R.headlinePlain,
-    ...R.sections.map(s => `【${s.title}】\n批：${s.pi.join("")}\n白話：${s.bai}`), "", "也去給先生看看你的名字：" + shareLink(R)].join("\n");
+  return [`問名堂批命：${R.name}（${gtxt(R.gender)}）`, `評等：${R.grade}（${R.score}分）　${R.headline}`, (R.aiParts && R.aiParts.headline) || R.headlinePlain,
+    ...R.sections.map(s => `【${s.title}】\n批：${s.pi.join("")}\n白話：${(R.aiParts && R.aiParts[s.key]) || s.bai}`), "", "也去給先生看看你的名字：" + shareLink(R)].join("\n");
 }
 const ICON = {
   line: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.5 3 2 6.6 2 11c0 3.9 3.5 7.2 8.3 7.9.3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.6 1.1-.5 6-3.5 8.1-6C21.4 14.4 22 12.8 22 11c0-4.4-4.5-8-10-8Zm-3.6 10.4H6.4a.5.5 0 0 1-.5-.5V8.9a.5.5 0 0 1 1 0v3.5h1.5a.5.5 0 0 1 0 1Zm2 -.5a.5.5 0 0 1-1 0V8.9a.5.5 0 0 1 1 0v4Zm4.6 0a.5.5 0 0 1-.9.3l-2-2.8v2.5a.5.5 0 0 1-1 0V8.9a.5.5 0 0 1 .9-.3l2 2.8V8.9a.5.5 0 0 1 1 0v4Zm3.2-2.5a.5.5 0 0 1 0 1h-1.5v1h1.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5V8.9c0-.3.2-.5.5-.5h2a.5.5 0 0 1 0 1h-1.5v1h1.5Z"/></svg>`,
@@ -692,7 +745,7 @@ async function openShare(R) {
         <a class="sicon" href="https://www.threads.com/intent/post?text=${enc(text)}&url=${enc(link)}" target="_blank" rel="noopener">${ICON.th}<span>Threads</span></a>
         <button type="button" class="sicon" id="shLink"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.6 13.4a1 1 0 0 1 0-1.4l3.5-3.5a1 1 0 1 1 1.4 1.4L12 13.4a1 1 0 0 1-1.4 0Zm-2.8 5.3a4 4 0 0 1-2.8-6.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a2 2 0 0 0 2.8 2.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a4 4 0 0 1-2.8 1.2Zm8.5-5.7a1 1 0 0 1-.7-1.7l2.1-2.1a2 2 0 0 0-2.8-2.8l-2.1 2.1a1 1 0 1 1-1.4-1.4l2.1-2.1a4 4 0 0 1 5.6 5.6l-2.1 2.1a1 1 0 0 1-.7.3Z"/></svg><span>複製連結</span></button>
       </div>
-      <p class="share-note">${noDownload ? "這裡不能直接下載，<b>長按上面的圖</b>就能存起來，再拿去 IG 限動。" : "圖片跟連結都不會帶你的生日。"}</p>
+      <p class="share-note">${noDownload ? "這裡不能直接下載，<b>長按上面的圖</b>存起來，再按上面的按鈕複製連結，一起貼給朋友。" : "圖片和連結一起給朋友，朋友點連結就能看自己的名字。都不會帶你的生日。"}</p>
       <div class="share-more">${noDownload ? "" : `<button type="button" class="opt small" id="shStory">存 IG 限動圖</button>`}<button type="button" class="opt small" id="shText">抄整張批命</button></div>
     </div>`;
   document.body.append(box);
@@ -709,23 +762,28 @@ async function openShare(R) {
   const save = (u, name) => { const a = document.createElement("a"); a.href = u; a.download = name; document.body.append(a); a.click(); a.remove(); toast("圖片存好了"); };
   const main = box.querySelector("#shMain");
   const canShareNative = navigator.share && !framed;
-  main.textContent = canShareNative ? "分享這張明信片" : noDownload ? "複製連結" : "存下這張明信片";
-  main.onclick = noDownload && !canShareNative ? () => copy(link, "連結抄好了，貼給朋友就好") : () => {};
+  main.textContent = canShareNative ? "分享圖片＋連結" : noDownload ? "複製連結" : "存圖片＋複製連結";
+  main.onclick = noDownload && !canShareNative ? () => copy(text + "\n" + link, "連結抄好了；圖片長按就能存") : () => {};
   try {
-    const blob = await cardBlob(await drawPostcard(R));
+    const blob = await cardBlob(await drawLongCard(R));
     file = new File([blob], fname, { type: "image/png" });
     url = URL.createObjectURL(blob);
-    box.querySelector("#shPic").innerHTML = `<button type="button" class="pic-zoom" aria-label="放大看明信片"><img src="${url}" alt="${esc(R.name)}的批命明信片：${R.grade}，${esc(R.headline)}"></button><p class="pic-tip">點一下放大看</p>`;
+    box.querySelector("#shPic").innerHTML = `<button type="button" class="pic-zoom long" aria-label="看整張批命長圖"><img src="${url}" alt="${esc(R.name)}的批命長圖：${R.grade}，${esc(R.headline)}"></button><p class="pic-tip">點一下看整張</p>`;
     box.querySelector(".pic-zoom").onclick = () => {
       const z = document.createElement("div"); z.className = "zoom";
-      z.innerHTML = `<img src="${url}" alt=""><p>${noDownload ? "長按圖片可以存起來" : "點一下關起來"}</p>`;
-      z.onclick = () => z.remove(); document.body.append(z);
+      z.classList.add("long");
+      z.innerHTML = `<p>${noDownload ? "長按圖片可以存起來・點旁邊關起來" : "往下捲看整張・點旁邊關起來"}</p><img src="${url}" alt="">`;
+      z.onclick = e => { if (e.target === z || e.target.tagName === "P") z.remove(); }; document.body.append(z);
     };
   } catch (_) { box.querySelector("#shPic").innerHTML = `<span>紅紙沒寫成，用下面的連結分享也一樣。</span>`; }
   if (canShareNative) {
-    const data = file && navigator.canShare && navigator.canShare({ files: [file] }) ? { files: [file], text: text + "\n" + link } : { title: "問名堂", text, url: link };
+    const data = file && navigator.canShare && navigator.canShare({ files: [file] }) ? { files: [file], title: "問名堂", text: text + "\n" + link } : { title: "問名堂", text, url: link };
     main.onclick = async () => { try { await navigator.share(data); } catch (_) {} };
-  } else if (!noDownload) main.onclick = () => { if (url) save(url, fname); };
+  } else if (!noDownload) main.onclick = async () => {
+    if (!url) return;
+    const a = document.createElement("a"); a.href = url; a.download = fname; document.body.append(a); a.click(); a.remove();
+    try { await navigator.clipboard.writeText(text + "\n" + link); toast("圖存好了，連結也抄好了：先貼圖，再貼連結"); } catch (_) { copy(link, "圖存好了，連結也抄好了"); }
+  };
   box.querySelector("#shStory")?.addEventListener("click", async () => {
     try { save(URL.createObjectURL(await cardBlob(await drawCard(R, true))), `問名堂_${R.name}_限動.png`); } catch (_) { toast("限動圖沒畫成，再按一次"); }
   });

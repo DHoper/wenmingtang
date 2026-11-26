@@ -4,6 +4,7 @@
 """
 import sys, os, json
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from fake_worker import fake_worker
 
 URL = os.environ.get("WM_URL", "http://127.0.0.1:8765/")
 out = sys.argv[1] if len(sys.argv) > 1 else "shots"
@@ -29,7 +30,7 @@ with sync_playwright() as p:
     for sz in sizes:
         w, h = map(int, sz.split("x"))
         ctx = b.new_context(viewport={"width": w, "height": h}, device_scale_factor=2, has_touch=w < 900, locale="zh-TW", timezone_id="Asia/Taipei")
-        page = ctx.new_page()
+        page = ctx.new_page(); fake_worker(page)
         errs = []
         page.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
         page.on("pageerror", lambda e: errs.append(str(e)))
