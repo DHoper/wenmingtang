@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS counters (
+  k TEXT PRIMARY KEY,
+  n INTEGER NOT NULL,
+  exp INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS counters_exp ON counters (exp);

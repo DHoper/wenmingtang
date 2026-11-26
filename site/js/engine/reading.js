@@ -50,7 +50,7 @@ const REN_ZONG = {
 const LV_SAY = { 2: "大吉的數", 1: "吉數", 0.5: "好的多、壞的少", "-0.5": "壞的多、好的少", "-1": "凶數", "-2": "大凶的數" };
 const SANCAI_SAY = { 大吉: "大順", 吉: "算順", 吉凶參半: "一半好一半卡", 凶多於吉: "卡卡的", 凶: "不順" };
 const ROLE_SAY = {
-  tian: "天格是跟著姓來的，祖上給的，改名也改不到，這格我看看就好，好壞都怪不到你。",
+  tian: "天格跟著姓走，祖上給的，我順帶看看。",
   ren: "人格最要緊，看的就是你這個人。",
   di: "地格看前半生，也看家裡、看囝仔。",
   wai: "外格看出外，朋友、貴人都看這格。",
@@ -82,7 +82,7 @@ function gridSection(k, g, female, ev) {
   const info = GRID_INFO[k];
   const head = `${info.label}${han(g.n)}，屬${g.yang ? "陽" : "陰"}${g.el}，「${g.name}」之數，${g.level}。`;
   const pi = [head, g.pi + "。"];
-  let bai = `${ROLE_SAY[k]}${compose(k, ev)}，${g.n81 !== g.n ? `過了八十一，扣掉八十照${han(g.n81)}來看，` : ""}屬${g.el}，叫「${g.name}」，${LV_SAY[g.lv]}。${g.text}`;
+  let bai = `${ROLE_SAY[k]}${compose(k, ev)}，${g.n81 !== g.n ? `數大過八十一，照${han(g.n81)}看，` : ""}屬${g.el}，叫「${g.name}」，${LV_SAY[g.lv]}。${g.text}`;
   if (female && g.female) { pi.push("坤造逢之，剛氣稍過。"); bai += g.female; }
   if (g.disputed) bai += "這個數，有的師父說好，有的說不好，我會配別格一起看。";
   return { key: k, title: `${info.label}・${info.alias}`, pi, bai };
@@ -140,7 +140,7 @@ function topicSection(topic, ev, female) {
       const cai = { 木: "土", 火: "金", 土: "水", 金: "木", 水: "火" }[ev.bazi.dm];
       const strong = ["身強", "偏強", "極旺"].includes(ev.bazi.strength);
       pi.push(strong ? "身旺任財，可攻可取" : "身弱財重，宜穩宜聚");
-      bai.push(`照八字看，屬${cai}的就是你的財。${strong ? "你身子夠旺，擔得起財，敢衝就有。" : "只是你身子較弱，大錢擔不住，穩穩地存，或是找人合夥較好。"}`);
+      bai.push(`照八字看，屬${cai}的就是你的財。${strong ? "你命底夠旺，擔得起財，敢衝就有。" : "只是你命底較弱，大錢擔不住，穩穩地存，或是找人合夥較好。"}`);
     }
   } else if (topic === "health") {
     const weak = ev.rel.tianRen === "剋" || ev.rel.renDi === "被剋" ? w.ren.el : null;
@@ -151,7 +151,7 @@ function topicSection(topic, ev, female) {
       pi.push(`八字${low}弱，宜顧${ORGAN[low].split("、")[0]}`);
       bai.push(`八字裡${low}最弱，${ORGAN[low]}這些所在，作息上照顧一下。`);
     }
-    bai.push("這是老祖宗的講法，身體真的不舒服，還是要去給醫生看。");
+    bai.push("身體真不舒服，去給醫生看，不要拖。");
   } else {
     pi.push(TIAN_REN[ev.rel.tianRen][0], REN_DI[ev.rel.renDi][0]);
     bai.push(TIAN_REN[ev.rel.tianRen][1], REN_DI[ev.rel.renDi][1]);
@@ -207,7 +207,7 @@ export function reading(p) {
   sections.push({
     key: "sancai", title: "三才配置",
     pi: [`天${sc.key[0]}、人${sc.key[1]}、地${sc.key[2]}，${sc.level}。`, `${TIAN_REN[ev.rel.tianRen][0]}；${REN_DI[ev.rel.renDi][0]}；${SANCAI_LV[sc.level]}。`],
-    bai: `天、人、地三格的五行，叫三才，看一世人走得順不順。你是天${sc.key[0]}、人${sc.key[1]}、地${sc.key[2]}，${SANCAI_SAY[sc.level]}。${sc.disputed ? "這個配法，師父們講的不一樣，我照我看的講。" : ""}${TIAN_REN[ev.rel.tianRen][1]}${REN_DI[ev.rel.renDi][1]}`,
+    bai: `你是天${sc.key[0]}、人${sc.key[1]}、地${sc.key[2]}，${SANCAI_SAY[sc.level]}。${sc.disputed ? "這個配法，師父們講的不一樣，我照我看的講。" : ""}${TIAN_REN[ev.rel.tianRen][1]}${REN_DI[ev.rel.renDi][1]}`,
   });
   sections.push({
     key: "outer", title: "出外與晚運",
@@ -228,8 +228,8 @@ export function reading(p) {
         `取${b.yong}為用${b.xi.length ? `，${b.xi.join("、")}為喜` : ""}${b.ji.length ? `，忌${b.ji.join("、")}` : ""}。`,
         renTag === "用神" ? "名之人格正合用神，數氣相投。" : renTag === "喜神" ? "名之人格得喜神之氣，可。" : renTag === "忌神" ? "名之人格反犯忌神，宜易之。" : "名之人格為閒神，無大礙。",
       ],
-      bai: `你生那天的天干是${b.dmGan}，屬${b.dm}，這就是你本人。八字裡幫你的力量大概${(n => n === 2 ? "兩" : han(n))(Math.max(1, Math.round(b.support * 10)))}成，算${b.strength}。` +
-        `所以你最欠、最要的是${b.yong}，這叫用神${b.xi.length ? `；${b.xi.join("、")}也幫得到你` : ""}${b.ji.length ? `；${b.ji.join("、")}跟你不合，要避開` : ""}。` +
+      bai: `你是${b.dmGan}${b.dm}的命，八字裡幫你的力量大概${(n => n === 2 ? "兩" : han(n))(Math.max(1, Math.round(b.support * 10)))}成，算${b.strength}。` +
+        `你最要的是${b.yong}${b.xi.length ? `；${b.xi.join("、")}也幫得到你` : ""}${b.ji.length ? `；${b.ji.join("、")}跟你不合，要避開` : ""}。` +
         `再看名字：${gl}；用的字，${cl}。` +
         (renTag === "忌神" ? "人格偏偏落在忌神，等於每天被人叫著跟你不合的五行。名字最該改的，就是這裡。" :
           renTag === "用神" ? "人格剛好落在用神，名字天天在替你補。好名字，根本就在這。" : ""),
@@ -252,7 +252,7 @@ export function reading(p) {
     pi: [renameWhy.length ? "名有所損，宜擇吉更易。" : ev.grade === "上上" || ev.grade === "上" ? "名格俱佳，毋庸更易。" : "名可堪用，更易隨緣。"],
     bai: renameWhy.length
       ? `我老實講，${renameWhy.join("，")}。這要認真想一下。不想動戶口名簿，取個常用名，天天給人叫，也有效。`
-      : ev.grade === "上上" || ev.grade === "上" ? "這名字好好用就好，不用改。" : "名字可以用，沒有非改不可的毛病。想要更好，我可以再幫你挑幾個看看。",
+      : ev.grade === "上上" || ev.grade === "上" ? "這名字好好用就好，不用改。" : "名字可以用，沒有非改不可的毛病。要更好，我再挑幾個給你看。",
   });
 
   sections.push(summarySection(ev, topic, renameWhy));

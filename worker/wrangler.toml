@@ -9,11 +9,9 @@ USER_READINGS = "3"
 USER_ASKS = "9"
 SITE_CALLS = "400"
 
-[[kv_namespaces]]
-binding = "LIMITS"
-id = "b4181e77e0c44e28adeeeeca175e77a2"
+# 每日次數已改記在 D1 的 counters 表（原子遞增）；舊的 KV（LIMITS）不再使用
 
-# 分享卡：每次分享把預覽圖存在這裡 30 天，朋友在 LINE／臉書看到的連結預覽就是這張圖
+# D1：分享卡（cards，存 30 天）與每日次數（counters）
 [[d1_databases]]
 binding = "CARDS"
 database_name = "wenming-cards"

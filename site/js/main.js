@@ -9,7 +9,7 @@ import { evaluate, GRID_INFO, GRID_KEYS } from "./engine/analyze.js";
 import { suggestNames } from "./engine/rename.js";
 import { PLACES, TOPICS, COMPOUND, AMBIGUOUS } from "./data/misc.js";
 import { slot, preload } from "./assets.js";
-import { aiAvailable, aiAsk, askLeft, LIMITS, aiReadingFull, readingsLeft, readingKey } from "./ai.js";
+import { aiAvailable, aiAsk, askLeft, LIMITS, aiReadingFull, readingsLeft, readingKey, cachedReading, readingPending } from "./ai.js";
 import { READING_TAGS } from "./ai-prompt.js";
 import { sfx, soundOn, setSound } from "./sfx.js";
 import { particles, crossfade, typeHTML, riseOnChange, pulse, reduced } from "./fx.js";
@@ -169,7 +169,7 @@ function seat() {
 function askName() {
   setPhase("name"); pose("speak"); setBack(seat);
   const kid = S.mode === "name";
-  speak(kid ? `小孩<span class="q">姓什麼？</span>寫在紅紙上。` : `名字寫給我看，<span class="q">寫全名。</span>`);
+  speak(kid ? `小孩<span class="q">姓什麼？</span>寫在紅紙上。` : `<span class="q">寫全名。</span>`);
   act.innerHTML = `<form class="pen" id="penForm" autocomplete="off">
       <label class="sr" for="nameIn">${kid ? "小孩的姓" : "全名"}</label>
       ${kid ? `<p class="pen-tip">幫小孩取名：<b>只寫姓</b>，名字我來挑</p>` : ""}
@@ -204,7 +204,7 @@ async function onNameInput(raw) {
   renderPaper({ newIndex: chars.length > prev ? chars.length - 1 : -1 });
   if (chars.length > prev) sfx("brush");
   let html = "";
-  if (conv.length) html += `<p class="fine">筆畫要照康熙字典算，我先幫你寫成繁體字。</p>`;
+  if (conv.length) html += `<p class="fine">我寫成正字，筆畫照康熙算。</p>`;
   for (const m of multi) html += `<p class="fine">是哪一個字？</p><div class="opts">${m.opts.map(o => `<button type="button" class="opt" data-i="${m.i}" data-c="${esc(o)}" aria-pressed="${S.chars[m.i] === o}">${esc(o)}</button>`).join("")}</div>`;
   if (unknown.length) html += `<p class="fine">「${esc(unknown.join("、"))}」這字我字典翻不到，筆畫不敢亂算，換個寫法看看。</p>`;
   if (S.mode === "name" && chars.length > 2) html += `<p class="fine warn">幫小孩取名只要寫姓就好，名字我來挑。要看自己的名字，按左上角「返」，選「看名字」。</p>`;
@@ -431,8 +431,10 @@ async function count() {
   await sleep(600);
   skip.remove();
   S.justCounted = true;
-  const hist = store.get("history", []).filter(h => h.name !== R.name);
-  hist.unshift({ name: R.name, surnameLen: R.surname.length, gender: S.gender, birth: S.birth, topic: S.topic, grade: R.grade, t: Date.now() });
+  const hk = h => [h.name, h.gender, h.birth ? JSON.stringify(h.birth) : "", h.topic].join("|");
+  const me = { name: R.name, surnameLen: R.surname.length, gender: S.gender, birth: S.birth, topic: S.topic, grade: R.grade, t: Date.now() };
+  const hist = store.get("history", []).filter(h => hk(h) !== hk(me));
+  hist.unshift(me);
   store.set("history", hist.slice(0, 8));
   showReading(R);
 }
@@ -455,14 +457,16 @@ function baziBlock(b) {
 }
 
 // ───────── 批命 ─────────
+let curReading = null;
 function showReading(R, opts = {}) {
+  curReading = R;
   setPhase("reading");
   pose(R.renameAdvised ? "stern" : "approve");
   setBack(opts.back || seat);
   renderPaper({ split: { surname: [...R.surname], given: [...R.given] } });
   paperText.querySelectorAll(".c").forEach((el, i) => { el.classList.add("shown"); el.querySelector(".n").textContent = han(R.chars[i].strokes); });
   $("#seal").classList.add("on");
-  const line = opts.say || (R.renameAdvised ? `這個名字喔……<span class="q">我就直說了。</span>` : R.grade === "上上" || R.grade === "上" ? `<span class="q">這名字不錯。</span>你看看。` : `<span class="q">還可以，</span>有幾個所在要注意。`);
+  const line = opts.say || (R.renameAdvised ? `這名字，<span class="q">我直說。</span>` : R.grade === "上上" || R.grade === "上" ? `<span class="q">這名字不錯。</span>你看看。` : `<span class="q">還可以，</span>有幾個所在要注意。`);
   speak(line);
   const view = S.view;
   if (S.justCounted) { S.justCounted = false; setTimeout(() => sfx("bell"), 120); }
@@ -472,7 +476,6 @@ function showReading(R, opts = {}) {
     <div class="rhead"><div class="mode" role="group" aria-label="怎麼看"><button type="button" data-v="both">都看</button><button type="button" data-v="pi">只看批語</button><button type="button" data-v="bai">只看白話</button></div></div>
     <div class="hero">
       <div class="grade">${R.grade}</div>
-      <div class="score">${han(R.score)}分</div>
       <div class="hl">${clauses(R.headline + "。")}</div>
       <div class="hlp">${prose(R.headlinePlain)}</div>
     </div>
@@ -508,8 +511,14 @@ function showReading(R, opts = {}) {
   $("#again").onclick = () => { S.mode = "read"; S.chars = []; askName(); };
   $("#shareR").onclick = $("#shareTop").onclick = () => openShare(R);
   aiAvailable().then(ok => {
-    if (!$("#readingBody")) return;
-    if (!ok) return;
+    if (!$("#readingBody") || curReading !== R || !ok) return;
+    if (opts.friend && !cachedReading(R) && !readingPending(R)) {
+      const note = $("#aiNote");
+      note.hidden = false;
+      note.innerHTML = `下面是照筆畫排的。<button type="button" class="opt small" id="askFull">請先生親口批</button>`;
+      $("#askFull").onclick = () => { note.hidden = true; runAIReading(R); setupAsk(R); };
+      return;
+    }
     runAIReading(R);
     setupAsk(R);
   });
@@ -522,20 +531,21 @@ function runAIReading(R) {
   const cap = (k, t) => { const max = k === "ren" ? LIMITS.SECTION_MAX + 60 : LIMITS.SECTION_MAX; const a = [...t]; if (a.length <= max) return t; const c = a.slice(0, max).join(""); const i = c.lastIndexOf("。"); return i > max * .5 ? c.slice(0, i + 1) : c + "……"; };
   slots.forEach(([, el]) => { el.classList.add("wait"); el.innerHTML = `<span class="ink-wait">先生正在寫……</span>`; });
   const fill = (parts, done) => {
-    if (!$("#readingBody")) return;
+    if (done) R.aiParts = Object.fromEntries(Object.entries(parts).map(([k, v]) => [k, cap(k, toTrad(v))]));
+    if (!$("#readingBody") || curReading !== R) return;
     for (const [k, el] of slots) {
       const t = parts[k];
       if (t) { el.classList.remove("wait"); el.textContent = cap(k, toTrad(t)); }
       else if (done) { el.classList.remove("wait"); el.innerHTML = engine[k]; }
     }
-    if (done) { R.aiParts = Object.fromEntries(Object.entries(parts).map(([k, v]) => [k, toTrad(v)])); }
   };
   aiReadingFull(R, fill).catch(e => {
-    fill({}, true);
+    fill(e.parts || {}, true);
+    if (curReading !== R) return;
     const note = $("#aiNote");
     if (e.code === "reading_limit" || e.code === "site_limit") {
-      if (note) { note.hidden = false; note.textContent = e.code === "site_limit" ? "今晚來問的人太多，先生歇了。下面先照筆畫排給你看。" : `今天先生已經親口批了 ${LIMITS.USER_READINGS} 張，下面先照筆畫排給你看。`; }
-      limitModal(e.code);
+      if (note) { note.hidden = false; note.textContent = e.code === "site_limit" ? "今晚來問的人太多，先生歇了。下面先照筆畫排給你看。" : `今天先生親口批過${num(LIMITS.USER_READINGS)}張了，下面先照筆畫排給你看。`; }
+      if (!S.limitShown) { S.limitShown = true; limitModal(e.code); }
     } else if (e.code !== "unavailable" && note) { note.hidden = false; note.textContent = "香斷了，先生這回講不下去。下面先照筆畫排給你看。"; }
   });
 }
@@ -545,8 +555,9 @@ function setupAsk(R) {
   const box = $("#askBox"), q = $("#askQ"), go = $("#askGo"), meta = $("#askMeta"), log = $("#askLog");
   box.hidden = false;
   const key = readingKey(R);
-  S.fu = S.fu || {};
-  const fuLeft = () => Math.max(0, LIMITS.FOLLOWUPS - (S.fu[key] || 0));
+  const twDay = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const fuAll = () => { const v = store.get("followups", null); return v && v.d === twDay ? v.m : {}; };
+  const fuLeft = () => Math.max(0, LIMITS.FOLLOWUPS - (fuAll()[key] || 0));
   const sync = () => {
     const n = [...q.value.trim()].length, left = Math.min(askLeft(), fuLeft());
     go.textContent = "追問";
@@ -574,7 +585,7 @@ function setupAsk(R) {
     item.scrollIntoView({ behavior: "smooth", block: "nearest" });
     try {
       await aiAsk(R, text, t => { out.innerHTML = toTrad(t).split(/\n+/).filter(x => x.trim()).map(x => `<span class="para">${esc(x)}</span>`).join(""); });
-      S.fu[key] = (S.fu[key] || 0) + 1;
+      { const m = fuAll(); m[key] = (m[key] || 0) + 1; store.set("followups", { d: twDay, m }); }
       q.value = "";
     } catch (e) {
       if (e.code === "user_limit" || e.code === "site_limit") { item.remove(); limitModal(e.code); }
@@ -590,10 +601,10 @@ function setupAsk(R) {
 function limitModal(kind) {
   const site = kind === "site_limit";
   const MSG = {
-    reading_limit: [`先生今天已經親口替你批了 ${LIMITS.USER_READINGS} 張，神力耗盡，要歇一下。`, `每個人一天只能請先生親口批 ${LIMITS.USER_READINGS} 張`],
-    user_limit: [`先生今天已經回你 ${LIMITS.USER_ASKS} 個問題，神力耗盡，要歇一下。`, `每個人一天只能追問 ${LIMITS.USER_ASKS} 次`],
-    followup_limit: [`這張已經追問 ${LIMITS.FOLLOWUPS} 次了，先生講得差不多了。`, `每張批命只能追問 ${LIMITS.FOLLOWUPS} 次`],
-    site_limit: ["今晚來問的人太多，廟裡的香都燒完了，先生也要歇了。", `整個網站一天只能請先生講 ${LIMITS.SITE_CALLS} 回`],
+    reading_limit: [`今天已經親口替你批了${num(LIMITS.USER_READINGS)}張，神力耗盡，要歇一下。`, `先生一天只親口批${num(LIMITS.USER_READINGS)}張`],
+    user_limit: [`今天已經回你${num(LIMITS.USER_ASKS)}句了，神力耗盡，要歇一下。`, `先生一天只回${num(LIMITS.USER_ASKS)}句`],
+    followup_limit: [`這張問過${num(LIMITS.FOLLOWUPS)}句了，該講的都講了。`, `一張紙只問${num(LIMITS.FOLLOWUPS)}句`],
+    site_limit: ["今晚來問的人太多，廟裡的香都燒完了，先生也要歇了。", `今晚的香只夠點${num(LIMITS.SITE_CALLS)}回`],
   }[kind] || ["先生要歇一下。", "次數有限"];
   const box = document.createElement("div");
   box.className = "share";
@@ -620,7 +631,7 @@ async function showRename(R) {
   const surname = R ? [...R.surname] : currentSplit().surname;
   const st = Object.assign({ length: R && R.given.length === 1 ? 1 : 2, keepPos: "", keepCh: "", exclude: "", leanFree: false }, store.get("renameCfg", {}));
   if (!R) renderPaper({ split: { surname, given: [] } });
-  const line = R ? `來，我幫你想幾個。<span class="q">姓是祖先傳的，不換，只換名。</span>` : `姓${esc(surname.join(""))}的喔，<span class="q">我挑幾個給你看看。</span>`;
+  const line = R ? `名字換一個看看。<span class="q">我挑幾個給你。</span>` : `姓${esc(surname.join(""))}的喔，<span class="q">我挑幾個給你看看。</span>`;
   speak(line);
   act.innerHTML = `
     ${rtop(R ? `替${esc(R.name)}擬名` : `替${esc(surname.join(""))}家的孩子取名`, "", line)}
@@ -667,7 +678,7 @@ async function showRename(R) {
     await ready; await initNames(load);
     const names = $("#ownIn").value.split(/[\s,，、]+/).map(n => [...n.replace(/[^\p{Script=Han}]/gu, "")].map(x => tradOptions(x)[0])).filter(a => a.length >= 1 && a.length <= 3 && a.every(ch => kangxi(ch) !== null));
     if (!names.length) { toast("姓不用寫，只寫名就好，像「宥廷」"); return; }
-    const own = names.map(g => { const ev = evaluate({ surname, given: g, gender: S.gender, bazi: S.bazi }); return { name: surname.join("") + g.join(""), given: g.join(""), score: ev.score, grade: ev.grade, own: true, reason: `人格${ev.wuge.ren.n}畫是${ev.wuge.ren.level}，總格${ev.wuge.zong.n}畫是${ev.wuge.zong.level}，三才${ev.sancai.level}。` }; });
+    const own = names.map(g => { const ev = evaluate({ surname, given: g, gender: S.gender, bazi: S.bazi }); return { name: surname.join("") + g.join(""), given: g.join(""), score: ev.score, grade: ev.grade, own: true, reason: `「${ev.sInfo.at(-1).ch}」${num(ev.sInfo.at(-1).strokes)}畫加「${ev.gInfo[0].ch}」${num(ev.gInfo[0].strokes)}畫，人格${num(ev.wuge.ren.n)}，${LVS(ev.wuge.ren.level)}；總格${num(ev.wuge.zong.n)}，${LVS(ev.wuge.zong.level)}；三才${ev.sancai.level === "吉" || ev.sancai.level === "大吉" ? "算順" : ev.sancai.level === "凶" || ev.sancai.level === "大凶" ? "卡卡的" : "普通"}。` }; });
     lastCands = [...own, ...lastCands.filter(x => !x.own)];
     $("#ownIn").value = "";
     renderSticks(R, surname);
@@ -681,8 +692,8 @@ function renderSticks(R, surname) {
   const box = $("#slips");
   if (!lastCands.length) { box.innerHTML = `<p class="fine ink">你這樣限，我翻不到筆畫、五行都合的。要留的字換一個，不要的字少寫幾個，再叫我挑。</p>`; return; }
   const best = lastCands.filter(c => !c.own).reduce((a, c) => (!a || c.score > a.score ? c : a), null);
-  box.innerHTML = lastCands.map((c, i) => `<button type="button" class="stick${c.own ? " own" : ""}${c === best ? " top" : ""}" data-i="${i}" style="--i:${i}" aria-label="${esc(c.name)}，${c.grade}，${c.score}分${c.own ? "，你帶來的" : ""}">
-      <span class="sk-g">${c.grade}</span><span class="sk-n vt">${esc(c.given)}</span><span class="sk-s">${c.own ? "你的" : han(c.score) + "分"}</span></button>`).join("")
+  box.innerHTML = lastCands.map((c, i) => `<button type="button" class="stick${c.own ? " own" : ""}${c === best ? " top" : ""}" data-i="${i}" style="--i:${i}" aria-label="${esc(c.name)}，${c.grade}${c === best ? "，這支最好" : ""}${c.own ? "，你帶來的" : ""}">
+      <span class="sk-g">${c.grade}</span><span class="sk-n vt">${esc(c.given)}</span><span class="sk-s">${c.own ? "你的" : c === best ? "這支好" : ""}</span></button>`).join("")
     + `<p class="sticks-tip">點一支籤，跟${R ? "原來的名字比比看" : "看整張批命"}</p>`;
   box.querySelectorAll(".stick").forEach(b => b.onclick = () => { sfx("paper"); showCompare(R, surname, lastCands[+b.dataset.i]); });
   if (!reduced) lastCands.forEach((_, i) => setTimeout(() => sfx("deal"), 120 + i * 90));
@@ -705,14 +716,15 @@ function showCompare(R, surname, cand) {
   const win = (a, b) => a > b ? "win" : "";
   act.innerHTML = `${rtop("兩個名字比一比", "", line)}
     <div class="vs">
-      <div class="vs-card${win(R.score, N.score) ? " win" : ""}"><span class="vs-tag">原名</span><p class="vs-n">${esc(R.name)}</p><p class="vs-g">${R.grade}</p><p class="vs-s">${han(R.score)}分</p></div>
-      <div class="vs-card${win(N.score, R.score) ? " win" : ""}"><span class="vs-tag">新名</span><p class="vs-n">${esc(N.name)}</p><p class="vs-g">${N.grade}</p><p class="vs-s">${han(N.score)}分</p></div>
+      <div class="vs-card${win(R.score, N.score) ? " win" : ""}"><span class="vs-tag">原名</span><p class="vs-n">${esc(R.name)}</p><p class="vs-g">${R.grade}</p></div>
+      <div class="vs-card${win(N.score, R.score) ? " win" : ""}"><span class="vs-tag">新名</span><p class="vs-n">${esc(N.name)}</p><p class="vs-g">${N.grade}</p></div>
     </div>
     <div class="reading cmp-paper"><table class="cmp"><tbody>${rows.map(r => `<tr><th scope="row">${r[0]}</th><td class="${win(r[3], r[4])}">${r[1]}</td><td class="${win(r[4], r[3])}">${r[2]}</td></tr>`).join("")}</tbody></table>
     <section class="sec"><p class="pi"><span>${clauses(N.headline + "。")}</span></p><p class="bai">${prose(N.headlinePlain)}${prose(cand.reason || "")}</p></section></div>
     <button type="button" class="btn main wide" id="cFull">看${esc(N.name)}的整張批命</button>`;
   $("#cFull").onclick = () => showReading(N, { back: () => showCompare(R, surname, cand) });
 }
+const LVS = l => ({ 吉多於凶: "半吉", 凶多於吉: "半凶" })[l] || l;
 function doNaming() { S.topic = "all"; showRename(null); }
 
 // ───────── 分享 ─────────
@@ -721,8 +733,8 @@ async function copy(txt, ok) {
   catch (_) { toast("這裡不給抄，長按文字複製"); }
 }
 function fullText(R) {
-  return [`問名堂批命：${R.name}（${gtxt(R.gender)}）`, `評等：${R.grade}（${R.score}分）　${R.headline}`, (R.aiParts && R.aiParts.headline) || R.headlinePlain,
-    ...R.sections.map(s => `【${s.title}】\n批：${s.pi.join("")}\n白話：${(R.aiParts && R.aiParts[s.key]) || s.bai}`), "", "也去給先生看看你的名字：" + shareLink(R)].join("\n");
+  return [`問名堂批命：${R.name}（${gtxt(R.gender)}）`, `先生批：${R.grade}　${R.headline}`, (R.aiParts && R.aiParts.headline) || R.headlinePlain,
+    ...R.sections.filter(s => s.key !== "bazi" && s.key !== "zodiac").map(s => `【${s.title}】\n批：${s.pi.join("")}\n白話：${(R.aiParts && R.aiParts[s.key]) || s.bai}`), "", "也去給先生看看你的名字：" + shareLink(R)].join("\n");
 }
 const ICON = {
   line: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.5 3 2 6.6 2 11c0 3.9 3.5 7.2 8.3 7.9.3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.6 1.1-.5 6-3.5 8.1-6C21.4 14.4 22 12.8 22 11c0-4.4-4.5-8-10-8Zm-3.6 10.4H6.4a.5.5 0 0 1-.5-.5V8.9a.5.5 0 0 1 1 0v3.5h1.5a.5.5 0 0 1 0 1Zm2 -.5a.5.5 0 0 1-1 0V8.9a.5.5 0 0 1 1 0v4Zm4.6 0a.5.5 0 0 1-.9.3l-2-2.8v2.5a.5.5 0 0 1-1 0V8.9a.5.5 0 0 1 .9-.3l2 2.8V8.9a.5.5 0 0 1 1 0v4Zm3.2-2.5a.5.5 0 0 1 0 1h-1.5v1h1.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5V8.9c0-.3.2-.5.5-.5h2a.5.5 0 0 1 0 1h-1.5v1h1.5Z"/></svg>`,
@@ -740,7 +752,7 @@ async function openShare(R) {
       <p class="share-h" id="shH">這張批命，傳給朋友</p>
       <div class="share-pic og" id="shPic"><span>紅紙正在寫……</span></div>
       <p class="pic-tip" id="shTip">傳出去的連結會帶著這張批命卡</p>
-      <button type="button" class="btn main wide" id="shMain" disabled>批命卡準備中……</button>
+      <button type="button" class="btn main wide" id="shMain" disabled>紅紙還在寫……</button>
       <div class="share-icons">
         <a class="sicon" id="toLine" target="_blank" rel="noopener">${ICON.line}<span>LINE</span></a>
         <a class="sicon" id="toFb" target="_blank" rel="noopener">${ICON.fb}<span>臉書</span></a>
@@ -765,8 +777,8 @@ async function openShare(R) {
   };
   setLinks();
   // 批命卡還沒存好之前，按 LINE、臉書先擋一下，免得傳出去的是沒有圖的連結
-  box.querySelectorAll(".share-icons a").forEach(a => a.addEventListener("click", e => { if (!ready) { e.preventDefault(); toast("批命卡還在準備，等一下再按"); } }));
-  box.querySelector("#shLink").onclick = () => ready ? copy(msg(), "連結抄好了，貼到 LINE 會帶著批命卡") : toast("批命卡還在準備，等一下再按");
+  box.querySelectorAll(".share-icons a").forEach(a => a.addEventListener("click", e => { if (!ready) { e.preventDefault(); toast("紅紙還沒乾，等一下"); } }));
+  box.querySelector("#shLink").onclick = () => ready ? copy(msg(), "連結抄好了，貼到 LINE 會帶著批命卡") : toast("紅紙還沒乾，等一下");
   box.querySelector("#shText").onclick = () => copy(fullText(R), "整張批命抄好了");
   const main = box.querySelector("#shMain");
   const canShareNative = navigator.share && !framed;
@@ -776,7 +788,13 @@ async function openShare(R) {
     z.innerHTML = long ? `<p>${noDownload ? "長按圖片可以存起來・點旁邊關起來" : "往下捲看整張・點旁邊關起來"}</p><img src="${u}" alt="">` : `<img src="${u}" alt=""><p>點一下關起來</p>`;
     z.onclick = e => { if (!long || e.target === z || e.target.tagName === "P") z.remove(); }; document.body.append(z);
   };
-  // 1. 畫預覽卡、存到 Worker，換成帶圖的連結
+  // 1. 先生還在寫就等一下；畫預覽卡、存到 Worker，換成帶圖的連結
+  const pend = readingPending(R);
+  if (pend) {
+    box.querySelector("#shPic").innerHTML = `<span>先生還在寫，寫完就幫你貼紅紙……</span>`;
+    await Promise.race([pend.catch(() => {}), sleep(30000)]);
+    if (!box.isConnected) return;
+  }
   try {
     const og = await drawOgCard(R);
     const ogUrl = URL.createObjectURL(await cardBlob(og));
@@ -784,7 +802,7 @@ async function openShare(R) {
     box.querySelector(".pic-zoom").onclick = () => zoom(ogUrl, false);
     const u = await uploadCard(R, og);
     if (u) link = u;
-    else box.querySelector("#shTip").textContent = "批命卡沒存上去，連結先用一般的；圖片可以用下面「存整張長圖」另外傳。";
+    else box.querySelector("#shTip").textContent = "紅紙沒貼上去，連結照樣能傳；圖用下面「存整張長圖」另外傳。";
   } catch (_) { box.querySelector("#shPic").innerHTML = `<span>紅紙沒寫成，用下面的連結分享也一樣。</span>`; }
   if (!box.isConnected) return;
   ready = true; setLinks();
@@ -831,7 +849,7 @@ async function showFriend(x) {
   const keys = keyLines(R0);
   act.innerHTML = `<div class="hero friend">
       <div class="score">${esc(x.name)}・${gtxt(x.g)}</div>
-      <div class="grade">${R0.grade}</div><div class="score">${han(R0.score)}分</div>
+      <div class="grade">${R0.grade}</div>
       <div class="hl">${clauses(R0.headline + "。")}</div>
       <div class="hlp">${prose(R0.headlinePlain)}</div>
     </div>
@@ -844,7 +862,7 @@ async function showFriend(x) {
     <button type="button" class="prop red seat-main" data-m="read"><span class="in"><span class="t">換我看名字</span><span class="s">寫下你的名字，先生算給你看</span></span></button>
     <div class="seat-sub"><button type="button" class="opt small" id="seeFriend">看${esc(x.name)}的整張批命</button></div>`;
   act.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { S.mode = b.dataset.m; S.chars = []; S.surnameLen = null; askName(); });
-  $("#seeFriend").onclick = () => showReading(R0, { back: () => showFriend(x), say: x.bazi ? `他那張有配八字，<span class="q">我這裡只看名字。</span>` : null });
+  $("#seeFriend").onclick = () => showReading(R0, { friend: true, back: () => showFriend(x), say: x.bazi ? `他那張有配八字，<span class="q">我這裡只看名字。</span>` : null });
   history.replaceState(null, "", location.pathname);
 }
 
@@ -856,7 +874,7 @@ function refreshHistory() {
     setPhase("seat"); pose("speak"); setBack(seat);
     S.chars = []; renderPaper();
     speak(`之前看過的，都在這。`);
-    const day = t => { const d = new Date(t); return `${d.getMonth() + 1}月${d.getDate()}日`; };
+    const day = t => { const d = new Date(t); return `${num(d.getMonth() + 1)}月${num(d.getDate())}日`; };
     act.innerHTML = `<div class="hist">${h.map((x, i) => `<button type="button" class="hist-row f-slip" data-i="${i}" style="--i:${i}"><b>${esc(x.name)}</b><span class="hg">${x.grade}</span><small>${gtxt(x.gender)}${x.birth ? "・有配八字" : ""}${x.t ? "・" + day(x.t) : ""}</small></button>`).join("")}</div>`;
     act.querySelectorAll("[data-i]").forEach(b => b.onclick = async () => {
       const x = h[+b.dataset.i];

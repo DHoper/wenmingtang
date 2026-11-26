@@ -63,7 +63,7 @@ export const inApp = /Line\/|Instagram|FBAN|FBAV/i.test(navigator.userAgent);
 export const framed = (() => { try { return top !== self; } catch (_) { return true; } })();
 export const noDownload = inApp || framed;
 export function shareText(R) {
-  return `我的名字給廟口先生批到【${R.grade}】${R.score}分：「${R.headline}」。換你，名字拿去給先生看看。`;
+  return `我的名字給廟口先生批了「${R.grade}」：「${R.headline}」。換你，名字拿去給先生看看。`;
 }
 
 /** 畫批命紅紙分享圖，回傳 canvas（1080×1350） */
@@ -126,8 +126,6 @@ export async function drawCard(R, story = false) {
   ctx.shadowColor = "rgba(70,0,0,.75)"; ctx.shadowOffsetY = 6; ctx.shadowBlur = 0;
   drawSpaced(ctx, R.grade, rx + rw / 2, ry + 260, 20);
   ctx.shadowColor = "transparent"; ctx.shadowOffsetY = 0;
-  ctx.font = `700 40px ${SONG}`; ctx.fillStyle = "#ffe6d2";
-  drawSpaced(ctx, han(R.score) + "分", rx + rw / 2, ry + 418, 10);
   // 批語（文言）與白話一句：依實際行數往下排，不超出紅紙
   ctx.font = `400 52px ${KAI}`; ctx.fillStyle = "#fff3dc";
   // 依逗號斷句，能併就併，不在詞中間斷行
@@ -413,8 +411,9 @@ export async function drawLongCard(R) {
     ctx.font = `500 24px ${SANS}`; ctx.fillStyle = "#87622c"; ctx.fillText(urlText, M, y + 160);
     return y + qs + 86;
   }
-  const probe = document.createElement("canvas"); probe.width = W; probe.height = 12000;
+  const probe = document.createElement("canvas"); probe.width = W; probe.height = 1;
   const H = Math.ceil(await render(probe.getContext("2d"), 12000));
+  probe.width = 0;
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
   await render(cv.getContext("2d"), H);
   return cv;
@@ -493,22 +492,27 @@ export async function drawOgCard(R) {
   return cv;
 }
 
-/** 把預覽卡存到 Worker，換一個帶著這張圖的專屬連結；失敗就回 null（改用一般連結） */
+/** 把預覽卡存到 Worker，換一個帶著這張圖的專屬連結；失敗就回 null（改用一般連結）。同一張只傳一次。 */
 const cardLinks = new Map();
-export async function uploadCard(R, cv) {
-  const key = [R.name, R.surname.length, R.gender, R.topic, R.grade, (R.aiParts && R.aiParts.headline) || ""].join("|");
-  if (cardLinks.has(key)) return cardLinks.get(key);
-  if (!CONFIG.AI_ENDPOINT || framed) return null;
-  let q = .86, data = cv.toDataURL("image/jpeg", q);
-  while (data.length * .75 > 420 * 1024 && q > .5) { q -= .1; data = cv.toDataURL("image/jpeg", q); }
-  const target = shareLink(R).replace(/r\/\d\.html#/, "#");
-  const desc = `「${R.headline}」換你，名字拿去給先生看看。`;
-  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 8000);
-  try {
-    const res = await fetch(CONFIG.AI_ENDPOINT.replace(/\/$/, "") + "/card", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ img: data, title: `${R.name}的名字，先生批【${R.grade}】｜問名堂`, desc, target }), signal: ctl.signal });
-    if (!res.ok) return null;
-    const j = await res.json();
-    if (j && j.url) { cardLinks.set(key, j.url); return j.url; }
-    return null;
-  } catch (_) { return null; } finally { clearTimeout(timer); }
+export function uploadCard(R, cv) {
+  const key = [R.name, R.surname.length, R.gender, R.topic, R.grade, R.bazi ? 1 : 0, (R.aiParts && R.aiParts.headline) || ""].join("|");
+  if (!cardLinks.has(key)) {
+    const p = (async () => {
+      if (!CONFIG.AI_ENDPOINT || framed) return null;
+      let q = .86, blob = await new Promise(r => cv.toBlob(r, "image/jpeg", q));
+      while (blob && blob.size > 420 * 1024 && q > .5) { q -= .1; blob = await new Promise(r => cv.toBlob(r, "image/jpeg", q)); }
+      if (!blob) return null;
+      const qs = new URLSearchParams({ t: `${R.name}的名字，先生批【${R.grade}】｜問名堂`, d: `「${R.headline}」換你，名字拿去給先生看看。`, u: shareLink(R).replace(/r\/\d\.html#/, "#") });
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 10000);
+      try {
+        const res = await fetch(CONFIG.AI_ENDPOINT.replace(/\/$/, "") + "/card?" + qs, { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: blob, signal: ctl.signal });
+        if (!res.ok) return null;
+        const j = await res.json();
+        return j && j.url ? j.url : null;
+      } catch (_) { return null; } finally { clearTimeout(timer); }
+    })();
+    cardLinks.set(key, p);
+    p.then(u => { if (!u) cardLinks.delete(key); });
+  }
+  return cardLinks.get(key);
 }

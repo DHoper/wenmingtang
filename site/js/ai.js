@@ -1,6 +1,7 @@
 // 「叩問先生」：AI 以引擎算出的批命（R）為依據，加上客人的一句叩問，用老先生的人設回答；結論不得與 R 相反
 import { CONFIG } from "./config.js";
 import { messagesFor, cleanQuestion, LIMITS, READING_TAGS } from "./ai-prompt.js";
+import { toTrad } from "./engine/chars.js";
 export { LIMITS };
 
 let samplePromise = null;
@@ -17,12 +18,18 @@ const twDay = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10)
 const LS = { ask: "wenming:ask", reading: "wenming:readings" };
 function usedToday(k = "ask") { try { const v = JSON.parse(localStorage.getItem(LS[k])); return v && v.d === twDay() ? v.n : 0; } catch (_) { return 0; } }
 function markUsed(k = "ask", n) { try { localStorage.setItem(LS[k], JSON.stringify({ d: twDay(), n: n ?? usedToday(k) + 1 })); } catch (_) {} }
+function cid() {
+  try { let v = localStorage.getItem("wenming:cid"); if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)); localStorage.setItem("wenming:cid", v); } return v; } catch (_) { return ""; }
+}
+// 伺服器回的剩餘次數，拿來校正本機記的
+function syncLeft(res, k, max) { const left = +res.headers.get("X-User-Left"); if (res.headers.has("X-User-Left") && left >= 0) markUsed(k, Math.max(0, max - left)); }
 export function askLeft() { return Math.max(0, LIMITS.USER_ASKS - usedToday("ask")); }
 export function readingsLeft() { return Math.max(0, LIMITS.USER_READINGS - usedToday("reading")); }
 
 // 看過的 AI 批命存在瀏覽器，重看不再扣次數（最多留 20 張）
 const CK = "wenming:aiCache";
-export function readingKey(R) { return [R.name, R.surname.length, R.gender, R.topic, R.bazi ? R.bazi.pillars.map(p => p.gz).join("") : "-"].join("|"); }
+const CACHE_VER = "v3";
+export function readingKey(R) { return [CACHE_VER, R.grade, R.name, R.surname.length, R.gender, R.topic, R.bazi ? R.bazi.pillars.map(p => p.gz).join("") : "-"].join("|"); }
 export function cachedReading(R) { try { return (JSON.parse(localStorage.getItem(CK)) || {})[readingKey(R)] || null; } catch (_) { return null; } }
 function saveReading(R, data) {
   try {
@@ -34,10 +41,14 @@ function saveReading(R, data) {
   } catch (_) {}
 }
 // 把 AI 依【標籤】分段的文字切成 { key: 文字 }
+const TAG_MAP = Object.fromEntries([...READING_TAGS, ["总评", "headline"], ["总格", "zong"], ["出外与晚运", "outer"], ["所问", "topic"], ["总结", "summary"], ["晚運", "outer"], ["出外", "outer"]]);
 export function parseReading(t) {
-  const map = Object.fromEntries(READING_TAGS), out = {};
-  const parts = String(t).split(/【([^】]{1,6})】/);
-  for (let i = 1; i < parts.length; i += 2) { const k = map[parts[i]]; if (k) out[k] = (parts[i + 1] || "").trim(); }
+  const out = {};
+  const parts = toTrad(String(t)).split(/\**\s*【\s*([^】]{1,8}?)\s*】\s*\**\s*[：:]?/);
+  for (let i = 1; i < parts.length; i += 2) {
+    const k = TAG_MAP[parts[i]] || TAG_MAP[toTrad(parts[i])];
+    if (k) out[k] = (parts[i + 1] || "").replace(/\*+/g, "").trim();
+  }
   return out;
 }
 
@@ -75,13 +86,13 @@ export async function aiAsk(R, question, onText0) {
   if (askLeft() <= 0) throw Object.assign(new Error("user_limit"), { code: "user_limit" });
   const sample = framed ? await getSample() : null;
   if (CONFIG.AI_ENDPOINT && !sample) {
-    const res = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ basis: aiBasis(R), question: q }) });
+    const res = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ basis: aiBasis(R), question: q, cid: cid() }) });
     if (!res.ok || !res.body) {
       let code = "http"; try { code = (await res.json()).error || code; } catch (_) {}
       if (code === "user_limit") markUsed("ask", LIMITS.USER_ASKS);
       throw Object.assign(new Error(code), { code });
     }
-    markUsed();
+    markUsed(); syncLeft(res, "ask", LIMITS.USER_ASKS);
     const rd = res.body.getReader(), dec = new TextDecoder(); let buf = "", txt = "";
     for (;;) {
       const { done, value } = await rd.read(); if (done) break;
@@ -105,37 +116,61 @@ export async function aiAsk(R, question, onText0) {
  * 整張批命由 AI 寫：onUpdate(段落物件, 是否寫完)。看過的直接用存檔、不扣次數。
  * 失敗時丟出 { code }：reading_limit、site_limit、unavailable、http
  */
+const inflight = new Map(); // readingKey → { parts, subs:Set, promise }
+export function readingPending(R) { const f = inflight.get(readingKey(R)); return f ? f.promise : null; }
 export async function aiReadingFull(R, onUpdate) {
   const hit = cachedReading(R);
   if (hit) { onUpdate(hit.parts, true); return hit.parts; }
-  if (readingsLeft() <= 0) throw Object.assign(new Error("reading_limit"), { code: "reading_limit" });
-  const sample = framed ? await getSample() : null;
-  let txt = "";
-  if (CONFIG.AI_ENDPOINT && !sample) {
-    const res = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ basis: aiBasis(R), mode: "reading" }) });
-    if (!res.ok || !res.body) {
-      let code = "http"; try { code = (await res.json()).error || code; } catch (_) {}
-      if (code === "reading_limit") markUsed("reading", LIMITS.USER_READINGS);
-      throw Object.assign(new Error(code), { code });
-    }
-    markUsed("reading");
-    const rd = res.body.getReader(), dec = new TextDecoder(); let buf = "";
-    for (;;) {
-      const { done, value } = await rd.read(); if (done) break;
-      buf += dec.decode(value, { stream: true }); const lines = buf.split("\n"); buf = lines.pop();
-      for (const l of lines) {
-        const m = l.match(/^data:\s*(.*)$/); if (!m || m[1] === "[DONE]") continue;
-        try { const d = JSON.parse(m[1]).choices?.[0]?.delta?.content; if (d) { txt += d; onUpdate(parseReading(txt), false); } } catch (_) {}
-      }
-    }
-  } else {
-    const s2 = sample || await getSample();
-    if (!s2) throw Object.assign(new Error("unavailable"), { code: "unavailable" });
-    markUsed("reading");
-    await s2(messagesFor(aiBasis(R), "", "reading").map(m => m.content).join("\n\n"), { cache: false, onText: ({ text }) => { if (text !== "Thinking...") { txt = text; onUpdate(parseReading(txt), false); } } });
+  const key = readingKey(R);
+  // 同一張已經在寫（例如寫到一半離開又回來）：接著用，不再發新請求、不再扣次數
+  const going = inflight.get(key);
+  if (going) {
+    going.subs.add(onUpdate); onUpdate(going.parts, false);
+    return going.promise;
   }
-  const parts = parseReading(txt);
-  if (Object.keys(parts).length >= 5) saveReading(R, { parts });
-  onUpdate(parts, true);
-  return parts;
+  if (readingsLeft() <= 0) throw Object.assign(new Error("reading_limit"), { code: "reading_limit" });
+  const job = { parts: {}, subs: new Set([onUpdate]) };
+  const emit = done => job.subs.forEach(f => { try { f(job.parts, done); } catch (_) {} });
+  job.promise = (async () => {
+    const sample = framed ? await getSample() : null;
+    let txt = "", truncated = false;
+    try {
+      if (CONFIG.AI_ENDPOINT && !sample) {
+        const res = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ basis: aiBasis(R), mode: "reading", cid: cid() }) });
+        if (!res.ok || !res.body) {
+          let code = "http"; try { code = (await res.json()).error || code; } catch (_) {}
+          if (code === "reading_limit") markUsed("reading", LIMITS.USER_READINGS);
+          throw Object.assign(new Error(code), { code });
+        }
+        markUsed("reading"); syncLeft(res, "reading", LIMITS.USER_READINGS);
+        const rd = res.body.getReader(), dec = new TextDecoder(); let buf = "";
+        for (;;) {
+          const { done, value } = await rd.read(); if (done) break;
+          buf += dec.decode(value, { stream: true }); const lines = buf.split("\n"); buf = lines.pop();
+          for (const l of lines) {
+            const m = l.match(/^data:\s*(.*)$/); if (!m || m[1] === "[DONE]") continue;
+            try { const c = JSON.parse(m[1]).choices?.[0]; const d = c?.delta?.content; if (c?.finish_reason === "length") truncated = true; if (d) { txt += d; job.parts = parseReading(txt); emit(false); } } catch (_) {}
+          }
+        }
+      } else {
+        const s2 = sample || await getSample();
+        if (!s2) throw Object.assign(new Error("unavailable"), { code: "unavailable" });
+        markUsed("reading");
+        await s2(messagesFor(aiBasis(R), "", "reading").map(m => m.content).join("\n\n"), { cache: false, onText: ({ text }) => { if (text !== "Thinking...") { txt = text; job.parts = parseReading(txt); emit(false); } } });
+      }
+    } catch (e) {
+      // 中途斷掉：已經寫完整的段落留著（最後一段可能只寫一半，丟掉）
+      const ks = Object.keys(job.parts); if (ks.length) delete job.parts[ks[ks.length - 1]];
+      e.parts = job.parts; inflight.delete(key); throw e;
+    }
+    const parts = parseReading(txt);
+    if (truncated) { const ks = Object.keys(parts); if (ks.length) delete parts[ks[ks.length - 1]]; }
+    job.parts = parts;
+    if (Object.keys(parts).length >= 3) saveReading(R, { parts });
+    inflight.delete(key);
+    emit(true);
+    return parts;
+  })();
+  inflight.set(key, job);
+  return job.promise;
 }
