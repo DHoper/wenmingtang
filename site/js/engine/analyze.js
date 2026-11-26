@@ -104,14 +104,14 @@ export function evaluate(p) {
 /** 是否主動建議改名 */
 export function shouldRename(ev) {
   const why = [];
-  if (["中下", "下"].includes(ev.grade)) why.push("整體評等偏低");
-  if (ev.wuge.ren.lv <= -1) why.push(`人格 ${ev.wuge.ren.n} 為${ev.wuge.ren.level}數`);
-  if (ev.wuge.zong.lv <= -1) why.push(`總格 ${ev.wuge.zong.n} 為${ev.wuge.zong.level}數`);
-  if (ev.sancai.v <= -0.6) why.push(`三才${ev.sancai.key}為凶配置`);
+  if (["中下", "下"].includes(ev.grade)) why.push("整個名字的分數偏低");
+  if (ev.wuge.ren.lv <= -1) why.push(`人格${ev.wuge.ren.n}畫是${ev.wuge.ren.level}的數`);
+  if (ev.wuge.zong.lv <= -1) why.push(`總格${ev.wuge.zong.n}畫是${ev.wuge.zong.level}的數`);
+  if (ev.sancai.v <= -0.6) why.push(`三才${ev.sancai.key}配得不順`);
   if (ev.match) {
     const renJi = ev.match.grids[0].tag === "忌神";
     const charsHelp = ev.match.chars.some(c => c.tag === "用神" || c.tag === "喜神");
-    if (renJi && !charsHelp) why.push("人格五行正犯忌神，用字也沒補到喜用");
+    if (renJi && !charsHelp) why.push("人格落在你八字的忌神，用的字也沒補到");
   }
   return why;
 }

@@ -153,13 +153,13 @@ async function onNameInput(raw) {
   renderPaper({ newIndex: chars.length > prev ? chars.length - 1 : -1 });
   if (chars.length > prev) sfx("brush");
   let html = "";
-  if (conv.length) html += `<p class="fine">姓名學以康熙繁體為準，紅紙上已寫成正體。</p>`;
+  if (conv.length) html += `<p class="fine">看名字照康熙字典，我幫你寫成正體字了。</p>`;
   for (const m of multi) html += `<p class="fine">是哪一個字？</p><div class="opts">${m.opts.map(o => `<button type="button" class="opt" data-i="${m.i}" data-c="${esc(o)}" aria-pressed="${S.chars[m.i] === o}">${esc(o)}</button>`).join("")}</div>`;
-  if (unknown.length) html += `<p class="fine">「${esc(unknown.join("、"))}」字典查不到，筆畫不敢亂算，換個寫法試試。</p>`;
+  if (unknown.length) html += `<p class="fine">「${esc(unknown.join("、"))}」這字我字典翻不到，筆畫不敢亂算，換個寫法看看。</p>`;
   const sp = currentSplit();
   if (S.mode === "read" && chars.length >= 3) {
     const two = chars.slice(0, 2).join("");
-    if (COMPOUND.includes(two) || S.surnameLen) html += `<p class="fine">${AMBIGUOUS.has(two) && !S.surnameLen ? `「${esc(two)}」是複姓嗎？` : "姓氏是："}</p><div class="opts">
+    if (COMPOUND.includes(two) || S.surnameLen) html += `<p class="fine">${AMBIGUOUS.has(two) && !S.surnameLen ? `「${esc(two)}」是複姓嗎？` : "姓是哪個？"}</p><div class="opts">
       <button type="button" class="opt" data-sl="1" aria-pressed="${sp.surname.length === 1}">${esc(chars[0])}</button>
       <button type="button" class="opt" data-sl="2" aria-pressed="${sp.surname.length === 2}">${esc(two)}</button></div>`;
   }
@@ -217,7 +217,7 @@ function openBirthCard() {
       <label>出生地<select id="bP"></select></label>
       <details><summary>夜裡 11 點後出生？</summary>
         <div class="seg" role="group" aria-label="子時換日"><button type="button" data-zi="early">23 點起算隔天</button><button type="button" data-zi="split">0 點才換日</button></div>
-        <p class="fine" style="color:#ffe2c4;margin-top:6px">兩派算法不同。預設 23 點起算隔天的子時。</p>
+        <p class="fine" style="color:#ffe2c4;margin-top:6px">這有兩派講法。我照 23 點就算隔天。</p>
       </details>
       <p class="preview" id="bPreview"></p>
       <div class="row"><button type="button" class="btn ghost" id="bCancel">先不用</button><button type="submit" class="btn main">好，就這天</button></div>
@@ -273,7 +273,7 @@ function openBirthCard() {
       S.birth = input(); store.set("birth", S.birth); sfx("paper");
       S.bazi = computeBazi({ ...S.birth, place: placeOf(S.birth.place) }, L);
       S.mode === "name" ? doNaming() : askTopic();
-    } catch (_) { toast("萬年曆查不到這天，換一天試試"); }
+    } catch (_) { toast("萬年曆翻不到這天，換一天看看"); }
   };
   setCal(cal); setZi(zi);
 }
@@ -406,7 +406,7 @@ function showReading(R, opts = {}) {
       b.disabled = true; $("#sec-ai").hidden = false; const out = $("#aiOut"); out.textContent = "先點一炷香……";
       $("#sec-ai").scrollIntoView({ behavior: "smooth", block: "start" });
       try { await aiReading(R, t => { out.textContent = t; }); }
-      catch (e) { out.textContent = e.code === "rate_limited" ? "今晚問的人多，稍後再來。" : "香斷了，這回說不下去，稍後再試。"; b.disabled = false; }
+      catch (e) { out.textContent = e.code === "rate_limited" ? "今晚問的人多，等一下再來問。" : "香斷了，這回講不下去，等一下再試。"; b.disabled = false; }
     };
   });
 }
@@ -451,7 +451,7 @@ async function showRename(R) {
     st.exclude = $("#rEx").value;
     store.set("renameCfg", st);
     if (st.keepCh && st.keepPos === "") st.keepPos = "0";
-    if (st.keepPos !== "" && !st.keepCh) { box.innerHTML = `<p class="fine">要保留哪個字，先寫在「保留」那格。</p>`; return; }
+    if (st.keepPos !== "" && !st.keepCh) { box.innerHTML = `<p class="fine">要留哪個字，先寫在「保留」那格。</p>`; return; }
     const ex = new Set([...st.exclude.replace(/[^\p{Script=Han}]/gu, "")].map(x => tradOptions(x)[0]));
     if (R) [...R.given].forEach(ch => { if (ch !== st.keepCh) ex.add(ch); });
     lastCands = suggestNames({ surname, gender: S.gender, bazi: S.bazi, length: st.length, keep: st.keepPos !== "" ? { pos: +st.keepPos, ch: st.keepCh } : null, exclude: ex, leanFree: st.leanFree, count: 6 });
@@ -471,7 +471,7 @@ async function showRename(R) {
 }
 function renderSlips(R, surname) {
   const box = $("#slips");
-  if (!lastCands.length) { box.innerHTML = `<p class="fine">這些條件下找不到筆畫、五行都合的名字。放寬保留字或不要的字再試。</p>`; return; }
+  if (!lastCands.length) { box.innerHTML = `<p class="fine">照這些條件，我翻不到筆畫、五行都合的。保留的字、不要的字放寬一點再來。</p>`; return; }
   box.innerHTML = lastCands.map((c, i) => `<button type="button" class="slip" data-i="${i}" style="--i:${i}"><b>${esc(c.name)}</b><span class="g2">${c.grade}・${han(c.score)}分${c.own ? "・你帶來的" : ""}</span><small>${esc(c.meaning || "")}</small><small class="k2">${esc(c.short || c.reason)}</small></button>`).join("");
   box.querySelectorAll(".slip").forEach(b => b.onclick = () => { sfx("paper"); showCompare(R, surname, lastCands[+b.dataset.i]); });
   if (!reduced) lastCands.forEach((_, i) => setTimeout(() => sfx("deal"), 120 + i * 90));
@@ -488,7 +488,7 @@ function showCompare(R, surname, cand) {
   act.innerHTML = `<div class="rhead"><span class="who">兩名對照</span></div>
     <div class="reading cmp-paper"><table class="cmp"><thead><tr><th></th><th>${esc(R.name)}</th><th>${esc(N.name)}</th></tr></thead><tbody>${rows.map(r => `<tr><td>${r[0]}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join("")}</tbody></table>
     <section class="sec"><p class="pi"><span>${esc(N.headline)}。</span></p><p class="bai">${esc(N.headlinePlain)}${esc(cand.reason)}</p></section></div>
-    <div class="row"><button type="button" class="btn ghost" id="cBack">回到候選名</button><button type="button" class="btn main" id="cFull">看${esc(N.name)}的完整批命</button></div>`;
+    <div class="row"><button type="button" class="btn ghost" id="cBack">回到候選名</button><button type="button" class="btn main" id="cFull">看完整批命</button></div>`;
   $("#cBack").onclick = back;
   $("#cFull").onclick = () => showReading(N, { back });
 }
@@ -534,7 +534,7 @@ const loadImg = src => new Promise(r => { const i = new Image(); i.onload = i.on
 const jobs = [ready, loadImg(innerWidth >= 900 && innerWidth / innerHeight > 1.05 ? "assets/scene/bg-wide.webp" : "assets/scene/bg.webp"), loadImg("assets/master/idle.webp"), loadImg("assets/props/table.webp"), loadImg("assets/ui/wood.webp"), document.fonts?.load("700 20px 'WM Kai'", "問名堂入座") || 0];
 let doneN = 0;
 jobs.forEach(j => Promise.resolve(j).then(() => { doneN++; introBar.style.width = Math.round(doneN / jobs.length * 100) + "%"; }, () => {}));
-Promise.all(jobs).then(() => { enterBtn.disabled = false; $("#introLoad").classList.add("done"); }).catch(() => { $(".intro-line").textContent = "字典沒翻開，請重新整理再試。"; });
+Promise.all(jobs).then(() => { enterBtn.disabled = false; $("#introLoad").classList.add("done"); }).catch(() => { $(".intro-line").textContent = "字典沒翻開，重新整理一下再來。"; });
 enterBtn.onclick = () => {
   $("#intro").classList.add("out"); sfx("bell");
   setTimeout(() => $("#intro").remove(), 900);
