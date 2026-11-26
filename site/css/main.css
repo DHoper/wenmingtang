@@ -1,0 +1,386 @@
+/*
+VOICE: 廟口老師傅，夜裡、香煙、低聲而篤定。
+IDEA: 水粉插畫的算命攤舞台（固定畫布等比放大），所有介面元件都是畫出來的實物：木桌面、匾額、木牌、紅紙、籤紙。
+PICTURE: 老師傅坐在紅布木桌後，左邊掛著寫了名字的灑金紅紙，背後是廟埕夜景。
+COLOUR and TYPE: 夜藍底、朱紅、古金、宣紙米白；楷書寫名字與大字，傳承明體寫文言批語，黑體寫白話。
+LAYOUT: 手機：全螢幕舞台＋底部木桌操作區（拇指可及）；寬螢幕：舞台在左、操作區在右。
+ASSETS: 外觀一律取自 assets/ 的圖：面板與按鈕用 border-image 九宮格，紙與木頭用平鋪材質。
+*/
+:root {
+  color-scheme: dark;
+  --night: #0d1420;
+  --ink: #2a1a10;          /* 紙上的墨 */
+  --ink-2: #5a4232;        /* 紙上的淡墨 */
+  --vermilion: #a8231a;    /* 紙上的朱 */
+  --gold: #e8c47a;         /* 木與紅紙上的金字 */
+  --cream: #f6ead4;        /* 木頭上的字 */
+  --mute: #c9b393;
+  --good: #2f6b3a; --bad: #a8231a;
+  --kai: "WM Kai", "LXGW WenKai TC", "BiauKai", "DFKai-SB", serif;
+  --ming: "Cactus Classical Serif", "Noto Serif TC", "PMingLiU", serif;
+  --sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --top-h: 56px;
+  --sheet-w: clamp(400px, 38vw, 560px);
+  --pad: max(4vw, 16px);
+  /* 素材 */
+  --wood: url(../assets/ui/wood.webp);
+  --paper: url(../assets/ui/paper.webp);
+  --redpaper: url(../assets/ui/redpaper.webp);
+  --redframe: url(../assets/ui/red-frame.webp);
+  /* 字在材質上的托底：木頭上的字壓深影，紅紙上的金字壓暗紅影，紙上的墨字不加 */
+  --on-wood: 0 1px 0 #000, 0 0 6px rgba(0, 0, 0, .85);
+  --on-red: 0 1px 0 rgba(60, 0, 0, .9), 0 0 6px rgba(70, 0, 0, .7);
+  /* 木頭上的刻字貼金：上緣壓暗、下緣一線亮，像刻進去再貼金 */
+  --carve: 0 -1px 0 rgba(0, 0, 0, .75), 0 1px 0 rgba(255, 220, 150, .22), 0 0 10px rgba(0, 0, 0, .55);
+  /* 淺色木頭上的陰刻：下緣一線亮 */
+  --engrave: 0 1px 0 rgba(255, 238, 205, .55), 0 -1px 0 rgba(60, 30, 10, .25);
+  --gold-ink: #ebc678;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--night); }
+body { color: var(--cream); font: 16px/1.75 var(--sans); overflow-x: clip; -webkit-tap-highlight-color: transparent; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: none; filter: drop-shadow(0 0 6px rgba(255, 205, 120, .95)); }
+.app { min-height: 100dvh; }
+
+/* ───────── 九宮格素材（共用） ───────── */
+.f-wood { border-style: solid; border-width: 12px; border-image: url(../assets/ui/btn-wood.webp) 52 fill / 12px stretch; }
+.f-red { border-style: solid; border-width: 14px; border-image: var(--redframe) 56 fill / 14px stretch; }
+.f-slip { border-style: solid; border-width: 22px; border-image: url(../assets/ui/slip-frame.webp) 118 / 22px stretch; background: var(--paper) 0 0 / 300px; }
+
+/* ───────── 舞台 ───────── */
+.viewport { position: fixed; inset: 0; overflow: hidden; background: var(--night); }
+.canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; width: 384px; height: 688px; transition: transform .5s ease; }
+.app[data-orient=land] .canvas { width: 512px; height: 512px; }
+.pos { position: absolute; }
+.slot { width: 100%; height: 100%; }
+.slot img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.bg .slot img { object-fit: cover; }
+.slot.ph { display: grid; place-items: center; text-align: center; border: 1px dashed rgba(232, 196, 122, .4); }
+.ph-label { font: 9px/1.35 var(--sans); color: rgba(246, 234, 212, .55); }
+
+/* 直式畫布 384×688：桌面前緣在 y≈452，操作區上緣對齊 y=488 */
+.bg { inset: 0; }
+.master { left: 62px; top: 172px; width: 260px; height: 266px; }
+.master .slot img { object-position: 50% 100%; transition: opacity .25s; }
+.table { left: -14px; top: 382px; width: 412px; height: 202px; filter: drop-shadow(0 -4px 10px rgba(0, 0, 0, .35)); }
+.brush { left: 292px; top: 392px; width: 74px; height: 50px; }
+.token { left: 106px; top: 380px; width: 24px; height: 56px; opacity: 0; transform: translateY(-14px); transition: opacity .4s, transform .4s; }
+.token.on { opacity: 1; transform: none; }
+.paper { left: 16px; top: 132px; width: 76px; height: 262px; transition: transform .5s ease, opacity .4s; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, .45)); }
+.app:not([data-orient=land]):is([data-phase=reading], [data-phase=rename], [data-phase=compare]) .paper { opacity: 0; }
+/* 寬螢幕畫布 512×512 */
+.app[data-orient=land] .master { left: 116px; top: 72px; width: 280px; height: 286px; }
+.app[data-orient=land] .table { left: -24px; top: 318px; width: 560px; height: 275px; }
+.app[data-orient=land] .brush { left: 388px; top: 330px; width: 84px; height: 57px; }
+.app[data-orient=land] .token { left: 176px; top: 316px; width: 26px; height: 60px; }
+.app[data-orient=land] .paper { left: 34px; top: 70px; width: 82px; height: 282px; }
+
+/* 灑金紅紙條（名字由程式寫上） */
+.paper-art { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(255, 190, 150, .22), transparent 75%), url(../assets/ui/redpaper-light.webp) 0 0 / 150px; border-style: solid; border-width: 7px; border-image: var(--redframe) 56 / 7px stretch; }
+.paper-text { position: absolute; inset: 12px 0 28px; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; font: 700 48px/1.1 var(--kai); color: #120703; -webkit-text-stroke: .9px #120703; text-shadow: 0 0 1px rgba(18, 7, 3, .6), 0 0 10px rgba(255, 225, 190, .35); }
+.paper-text .c { position: relative; display: inline-block; transition: color .35s, text-shadow .35s; }
+.paper-text .c.new { animation: ink .5s ease-out both; }
+@keyframes ink { from { opacity: 0; filter: blur(3px); transform: scale(1.12); } }
+.paper-text .c.lit { color: #fff1cf; -webkit-text-stroke-color: #fff1cf; text-shadow: 0 0 2px #5a0f08, 0 0 12px rgba(255, 210, 140, .9); }
+.paper-text .split { width: 22px; height: 0; border-top: 1.5px solid rgba(18, 7, 3, .45); margin: 6px 0; -webkit-text-stroke: 0; }
+.paper-text .n { position: absolute; inset-inline-end: -26px; inset-block-start: 50%; transform: translateY(-50%); writing-mode: horizontal-tb; min-width: 22px; padding: 2px 3px; text-align: center; background: var(--paper) 0 0 / 120px; border-radius: 2px; box-shadow: 0 2px 4px rgba(0, 0, 0, .4); font: 700 13px/1 var(--sans); color: var(--vermilion); -webkit-text-stroke: 0; text-shadow: none; opacity: 0; transition: opacity .3s, transform .3s; transform: translateY(-50%) scale(.6); }
+.paper-text .c.shown .n { transform: translateY(-50%); }
+.paper-text .c.shown .n { opacity: 1; }
+.paper-text .rs { position: absolute; inset-inline-start: 50%; inset-block-start: -2px; transform: translate(-50%, -100%); padding: 2px 5px; background: var(--paper) 0 0 / 120px; box-shadow: 0 2px 4px rgba(0, 0, 0, .4); writing-mode: horizontal-tb; font: 700 11px/1 var(--sans); color: var(--ink); white-space: nowrap; opacity: 0; -webkit-text-stroke: 0; text-shadow: none; }
+.paper-text .c.restoring .rs { animation: rs 1s ease both; }
+@keyframes rs { 0% { opacity: 0; } 25%, 75% { opacity: 1; } 100% { opacity: 0; } }
+.paper-text .v { font: 400 12px/1 var(--kai); color: rgba(18, 7, 3, .7); -webkit-text-stroke: 0; text-shadow: none; margin: 4px 0; }
+.paper.empty .paper-text::before { content: "點我落筆"; font: 400 16px/1.2 var(--kai); letter-spacing: .2em; -webkit-text-stroke: 0; color: rgba(18, 7, 3, .55); }
+.seal { position: absolute; right: -6px; bottom: 4px; width: 34px; height: 34px; display: grid; place-items: center; background: url(../assets/props/seal.webp) center / contain no-repeat; font: 700 11px/1.05 var(--kai); color: #c42c1e; writing-mode: vertical-rl; opacity: 0; transform: scale(1.8) rotate(-8deg); transition: transform .35s cubic-bezier(.3, 1.6, .5, 1), opacity .2s; mix-blend-mode: multiply; }
+.seal.on { opacity: 1; transform: scale(1) rotate(-8deg); }
+
+/* ───────── 頂列：匾額 ───────── */
+.top { position: fixed; top: 0; left: 0; right: 0; z-index: 30; height: calc(var(--top-h) + var(--safe-t)); padding: var(--safe-t) var(--pad) 0; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+.top > * { pointer-events: auto; }
+.brand { display: grid; place-items: center; width: 120px; height: 40px; background: url(../assets/ui/plaque.webp) center / 100% 100% no-repeat; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .55)); font: 700 19px/1 var(--kai); letter-spacing: .32em; padding-left: .32em; color: #f3d48c; text-decoration: none; text-shadow: 0 1px 0 #000, 0 0 8px rgba(243, 212, 140, .35); }
+.tools { display: flex; gap: 8px; }
+.chip { min-height: 32px; padding: 0 2px; font: 700 14px/1 var(--kai); letter-spacing: .04em; color: var(--gold-ink); text-shadow: var(--carve); background: none; }
+.chip.f-wood { border-width: 7px 9px; border-image-width: 7px 9px; }
+.tools { gap: 6px; }
+
+/* ───────── 老師傅的話：宣紙籤條 ───────── */
+.say { position: fixed; z-index: 20; right: var(--pad); top: calc(var(--top-h) + var(--safe-t) + 6px); width: fit-content; max-width: min(15em, calc(100vw - 2 * var(--pad))); padding: 4px 8px; border-width: 16px; border-image-width: 16px; font: 400 clamp(19px, 5vw, 21px)/1.55 var(--kai); letter-spacing: .03em; color: var(--ink); text-wrap: balance; box-shadow: 0 6px 14px rgba(0, 0, 0, .45); transition: opacity .3s; }
+.say:empty { opacity: 0; }
+.say .q { color: var(--vermilion); font-weight: 700; }
+
+/* ───────── 操作區：木桌面 ───────── */
+.sheet { position: fixed; z-index: 25; left: 0; right: 0; bottom: 0; max-height: 66dvh; overflow-y: auto; overscroll-behavior: contain; background: linear-gradient(rgba(0, 0, 0, .25), transparent 40px), var(--wood) 0 0 / 300px; border-top: 14px solid; border-image: url(../assets/ui/btn-wood.webp) 52 52 0 52 / 14px 0 0 0 stretch; box-shadow: 0 -10px 30px rgba(0, 0, 0, .6); }
+.sheet-bg { display: none; }
+.sheet-in { position: relative; padding: 14px var(--pad) calc(18px + var(--safe-b)); display: grid; gap: 14px; }
+.app:is([data-phase=reading], [data-phase=rename], [data-phase=compare]) .sheet { top: calc(var(--top-h) + var(--safe-t) + 92px); max-height: none; }
+.app:is([data-phase=reading], [data-phase=rename], [data-phase=compare]) .sheet-in { padding-top: 0; }
+.app:is([data-phase=reading], [data-phase=rename], [data-phase=compare]) .say { display: none; }
+.foot { position: fixed; z-index: 1; left: 0; bottom: 0; padding: 4px 10px; font-size: 12px; opacity: .6; }
+.foot a { color: var(--mute); }
+.app:not([data-phase=seat]) .foot { display: none; }
+
+/* 寬螢幕：舞台在左，操作區在右 */
+.app[data-orient=land] .viewport { right: var(--sheet-w); }
+.app[data-orient=land] .sheet { left: auto; right: 0; top: 0 !important; bottom: 0; width: var(--sheet-w); max-height: none; border-top: 0; border-left: 14px solid; border-image: url(../assets/ui/btn-wood.webp) 52 0 52 52 / 0 0 0 14px stretch; }
+.app[data-orient=land] .sheet-in { padding-top: calc(var(--top-h) + var(--safe-t) + 4px); }
+.app[data-orient=land] .top { right: var(--sheet-w); }
+.app[data-orient=land] { --pad: 24px; }
+.app[data-orient=land] .say { right: calc(var(--sheet-w) + 3vw); top: 34%; max-width: min(14em, 24vw); }
+.app[data-orient=land]:is([data-phase=reading], [data-phase=rename], [data-phase=compare]) .say { display: block; }
+
+/* ───────── 元件 ───────── */
+.h { margin: 0; font: 700 20px/1.4 var(--kai); letter-spacing: .08em; color: var(--gold-ink); text-shadow: var(--carve); }
+.fine { margin: 0; font: 400 16px/1.7 var(--kai); color: rgba(236, 214, 176, .9); text-shadow: var(--carve); }
+.row { display: flex; gap: 10px; justify-content: flex-end; align-items: center; }
+.row .btn.main { flex: 1 1 auto; max-width: 300px; }
+.row .btn.ghost { flex: 0 0 auto; }
+
+/* 按鈕：朱漆雲紋牌（主要）、胡桃木牌（次要） */
+.btn { min-height: 52px; padding: 0 8px; background: none; white-space: nowrap; font: 700 19px/1.2 var(--kai); letter-spacing: .1em; transition: transform .12s, filter .2s; }
+.btn:active { transform: translateY(2px) scale(.98); }
+.btn.main { border-style: solid; border-width: 0 clamp(34px, 10vw, 46px); border-image: url(../assets/ui/btn-cloud.webp) 0 150 fill / 0 clamp(34px, 10vw, 46px) stretch; color: #fff3d6; text-shadow: var(--on-red); }
+.btn.main:disabled { filter: grayscale(.75) brightness(.7); cursor: default; }
+.btn.ghost { border-style: solid; border-width: 12px 14px; border-image: url(../assets/ui/btn-wood.webp) 52 fill / 12px 14px stretch; color: var(--cream); text-shadow: var(--carve); min-height: 48px; box-shadow: 0 3px 6px rgba(0, 0, 0, .35); }
+.btn.ghost:disabled { opacity: .5; cursor: default; }
+.btn.wide { width: 100%; }
+
+/* 小木牌選項 */
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opt { min-height: 44px; padding: 0 6px; background: none; border-style: solid; border-width: 10px 12px; border-image: url(../assets/ui/btn-wood.webp) 52 fill / 10px 12px stretch; font: 700 18px/1.2 var(--kai); color: var(--gold-ink); text-shadow: var(--carve); }
+.opt[aria-pressed=true] { border-width: 9px 14px; border-image: url(../assets/ui/btn-red.webp) 44 72 fill / 9px 14px stretch; color: #fff3d6; text-shadow: var(--on-red); }
+.opt:disabled { opacity: .4; }
+
+/* 寫字的宣紙格 */
+.pen { display: grid; gap: 10px; }
+.pen input, .ask-row input { min-height: 56px; padding: 0 10px; border-style: solid; border-width: 12px; border-image: url(../assets/ui/slip-frame.webp) 118 / 12px stretch; background: var(--paper) 0 0 / 260px; color: var(--ink); font: 700 26px/1.2 var(--kai); letter-spacing: .16em; outline: none; transition: filter .2s; }
+.pen input:focus, .ask-row input:focus, .birth select:focus, .field select:focus, .field input:focus { filter: drop-shadow(0 0 6px rgba(255, 205, 120, .85)); outline: none; }
+.pen input { width: 100%; }
+.pen input::placeholder, .ask-row input::placeholder { color: rgba(90, 66, 50, .5); }
+
+/* 大選擇牌（入座、生辰） */
+.props { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.prop { position: relative; display: grid; place-items: center; min-height: 128px; padding: 6px; background: none; text-align: center; box-shadow: 0 6px 14px rgba(0, 0, 0, .45); transition: transform .15s; }
+.prop:active { transform: scale(.97); }
+.prop.f-wood { border-width: 14px; border-image-width: 14px; }
+.prop.red { border-style: solid; border-width: 16px; border-image: var(--redframe) 56 fill / 16px stretch; }
+.prop .t { display: block; white-space: nowrap; font: 700 clamp(22px, 6.4vw, 28px)/1.15 var(--kai); color: var(--gold-ink); text-shadow: var(--carve); letter-spacing: .1em; }
+.prop .s { display: block; font: 400 15px/1.5 var(--kai); color: rgba(236, 214, 176, .82); text-shadow: var(--carve); margin-top: 8px; letter-spacing: .04em; }
+.prop.red .t { color: #ffe3a3; text-shadow: var(--on-red); }
+.prop.red .s { color: rgba(255, 236, 214, .9); text-shadow: var(--on-red); }
+
+/* 乾坤木牌 */
+.tokens { display: flex; justify-content: center; gap: clamp(24px, 10vw, 56px); padding: 4px 0; }
+.tk { display: grid; justify-items: center; gap: 6px; background: none; border: 0; padding: 0; transition: transform .2s; }
+.tk .face { display: grid; place-items: center; width: 78px; height: 184px; background: url(../assets/props/token.webp) center / 100% 100% no-repeat; filter: drop-shadow(0 8px 8px rgba(0, 0, 0, .5)); writing-mode: vertical-rl; font: 700 38px/1 var(--kai); letter-spacing: .22em; color: #3a1d08; text-shadow: var(--engrave); padding: 20% 13% 6% 0; }
+.tk .s { font: 400 16px/1.3 var(--kai); color: rgba(236, 214, 176, .9); text-shadow: var(--carve); }
+.tk:active, .tk[aria-pressed=true] { transform: translateY(-6px); }
+.tk[aria-pressed=true] .face { filter: drop-shadow(0 0 10px rgba(255, 205, 120, .8)); }
+
+/* 招牌 */
+.signs { display: flex; gap: 10px; justify-content: space-between; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 10px; }
+.sign { position: relative; flex: none; scroll-snap-align: start; width: 58px; height: 196px; padding: 0; background: none; border-style: solid; border-width: 34px 6px 5px; border-image: url(../assets/props/sign.webp) 236 22 30 22 fill / 34px 6px 5px stretch; transform-origin: 50% 0; transition: transform .3s; }
+.sign .t { display: block; writing-mode: vertical-rl; margin: auto; font: 700 25px/1 var(--kai); letter-spacing: .3em; color: #2b1508; text-shadow: var(--engrave); }
+.sign { filter: drop-shadow(0 6px 5px rgba(0, 0, 0, .45)); }
+.sign[aria-pressed=true] { transform: translateY(6px); filter: drop-shadow(0 0 8px rgba(255, 200, 110, .85)); }
+.sign[aria-pressed=true] .t { color: var(--vermilion); }
+
+/* 生辰帖：灑金紅帖 */
+.birth { position: relative; display: grid; gap: 10px; padding: 6px 4px; border-style: solid; border-width: 18px; border-image: var(--redframe) 56 fill / 18px stretch; box-shadow: 0 8px 16px rgba(0, 0, 0, .45); }
+.seg { display: inline-flex; gap: 4px; width: fit-content; }
+.seg button { min-height: 40px; padding: 0 4px; background: none; border-style: solid; border-width: 8px 10px; border-image: url(../assets/ui/btn-wood.webp) 52 fill / 8px 10px stretch; color: var(--gold-ink); text-shadow: var(--carve); font: 700 16px/1.2 var(--kai); }
+.seg button[aria-pressed=true] { border-image: url(../assets/ui/slip-frame.webp) 118 fill / 8px 10px stretch; color: var(--vermilion); text-shadow: none; }
+.wheels { display: grid; grid-template-columns: 2.1fr 1fr 1fr; gap: 6px; }
+.wheels:has(.w2) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.wheels .w2 { grid-column: span 2; }
+.birth label, .field { display: grid; gap: 2px; font: 700 15px/1.4 var(--kai); color: #ffe3a3; text-shadow: var(--on-red); }
+.birth select, .field select, .field input { width: 100%; min-height: 46px; padding: 0 6px; border-style: solid; border-width: 7px; border-image: url(../assets/ui/slip-frame.webp) 118 / 7px stretch; background: var(--paper) 0 0 / 220px; color: var(--ink); font: 500 16px/1.2 var(--sans); text-shadow: none; outline: none; }
+.birth select option { color: #000; }
+.leap { display: flex !important; align-items: center; gap: 6px; } .leap[hidden] { display: none !important; }
+.leap input { width: 20px; height: 20px; accent-color: #e8c47a; }
+details summary { cursor: pointer; min-height: 32px; font: 400 16px/2 var(--kai); color: #ffe3a3; text-shadow: var(--on-red); }
+.preview { margin: 0; padding: 8px 10px; font: 700 clamp(19px, 5.4vw, 24px)/1.4 var(--kai); color: var(--ink); letter-spacing: .04em; white-space: nowrap; overflow: hidden; border-style: solid; border-width: 10px; border-image: url(../assets/ui/slip-frame.webp) 118 / 10px stretch; background: var(--paper) 0 0 / 220px; }
+.preview small { display: block; white-space: normal; font: 400 13px/1.6 var(--sans); letter-spacing: 0; color: var(--ink-2); }
+.preview:empty { display: none; }
+
+/* 五格：宣紙小籤 */
+.grid5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.g { padding: 2px 0 0; border-style: solid; border-width: 9px; border-image: url(../assets/ui/slip-frame.webp) 118 / 9px stretch; background: var(--paper) 0 0 / 200px; color: var(--ink); text-align: center; box-shadow: 0 4px 8px rgba(0, 0, 0, .4); transition: opacity .4s, transform .4s, box-shadow .3s; }
+button.g { cursor: pointer; font: inherit; }
+.g .k { display: block; font: 12px/1.3 var(--sans); color: var(--ink-2); }
+.g .num { display: block; font: 700 28px/1.15 var(--kai); color: var(--ink); }
+.g .el { display: inline-block; margin: 2px 0; font: 700 12px/1 var(--sans); padding: 3px 6px; border-radius: 2px; }
+.g .lv { display: block; font: 700 13px/1.4 var(--kai); }
+.g.pending { border-image: var(--redframe) 56 fill / 9px stretch; }
+.g.pending > * { visibility: hidden; }
+.g.pending::after { content: "命"; position: absolute; inset: 0; display: grid; place-items: center; font: 700 22px/1 var(--kai); color: rgba(255, 227, 163, .55); }
+.g { position: relative; }
+.g.on { transform: translateY(-3px); box-shadow: 0 0 0 2px #e9b44c, 0 0 12px rgba(255, 200, 110, .8); }
+.lv.good { color: var(--good); } .lv.bad { color: var(--bad); }
+.e-木 { background: #2f5d3a; color: #e8f4e2; } .e-火 { background: #a8231a; color: #ffe6d8; } .e-土 { background: #87622c; color: #fbeed4; }
+.e-金 { background: #8d7f62; color: #fffaf0; } .e-水 { background: #23415e; color: #dbe9f6; }
+.sancai { margin: 0; text-align: center; font: 700 16px/1.5 var(--kai); letter-spacing: .08em; color: var(--gold-ink); text-shadow: var(--carve); }
+
+/* 八字 */
+.pillars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; text-align: center; }
+.pillar { padding: 2px 0; border-style: solid; border-width: 9px; border-image: var(--redframe) 56 fill / 9px stretch; }
+.pillar b { display: block; font: 700 26px/1.2 var(--kai); color: #fff3d6; text-shadow: var(--on-red); }
+.pillar span { font-size: 12px; color: #ffe6d2; text-shadow: var(--on-red); }
+.bars { display: grid; gap: 6px; }
+.bar { display: grid; grid-template-columns: 1.6em minmax(0, 1fr) 3.2em; align-items: center; gap: 8px; font: 14px/1.4 var(--sans); }
+.bar i { display: block; height: 10px; background: rgba(42, 26, 16, .14); overflow: hidden; }
+.bar i b { display: block; height: 100%; width: 0; transition: width .9s ease; }
+.bar em { font-style: normal; text-align: right; }
+.bar.yong span { color: var(--vermilion); font-weight: 700; }
+#countBazi .bar { color: var(--cream); } #countBazi .bar i { background: rgba(0, 0, 0, .35); } #countBazi .bar em { color: var(--mute); }
+
+/* ───────── 批命：一張籤紙 ───────── */
+.rhead { position: sticky; top: 0; z-index: 3; margin: 0 calc(-1 * var(--pad)); padding: 10px var(--pad); background: linear-gradient(rgba(0, 0, 0, .35), rgba(0, 0, 0, .1)), var(--wood) 0 0 / 300px; box-shadow: 0 6px 12px rgba(0, 0, 0, .45); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.app[data-orient=land] .rhead { padding-top: calc(var(--top-h) + var(--safe-t) + 4px); }
+.app[data-orient=land]:is([data-phase=reading], [data-phase=rename], [data-phase=compare]) .sheet-in { padding-top: 0; }
+.rhead .who { font: 700 21px/1.2 var(--kai); letter-spacing: .08em; color: var(--gold-ink); text-shadow: var(--carve); }
+.rhead .who small { font: 400 13px/1 var(--sans); letter-spacing: 0; color: #ead9bd; margin-left: 6px; }
+.mode { display: inline-flex; gap: 4px; flex: none; }
+.mode button { min-height: 34px; padding: 0 1px; background: none; border-style: solid; border-width: 8px 10px; border-image: url(../assets/ui/btn-wood.webp) 52 fill / 8px 10px stretch; color: var(--gold-ink); text-shadow: var(--carve); font: 700 14px/1 var(--kai); }
+.mode button[aria-pressed=true] { border-image: url(../assets/ui/btn-red.webp) 44 72 fill / 8px 10px stretch; color: #fff3d6; text-shadow: var(--on-red); }
+
+.hero { position: relative; text-align: center; padding: 12px 6px 10px; border-style: solid; border-width: 22px; border-image: var(--redframe) 56 fill / 22px stretch; box-shadow: 0 8px 18px rgba(0, 0, 0, .45); }
+.hero .grade { font: 700 clamp(64px, 18vw, 96px)/1 var(--kai); letter-spacing: .08em; color: #ffe3a3; -webkit-text-stroke: 1px #ffe3a3; text-shadow: 0 3px 0 rgba(70, 0, 0, .7), 0 0 18px rgba(255, 200, 110, .45); }
+.hero .score { font: 700 15px/1.6 var(--kai); letter-spacing: .2em; color: #ffe6d2; text-shadow: var(--on-red); }
+.hero .hl { font: 700 clamp(20px, 5.4vw, 26px)/1.5 var(--kai); letter-spacing: .06em; color: #fff3dc; text-shadow: var(--on-red); margin-top: 6px; text-wrap: balance; }
+.hero .hlp { font: 400 15px/1.75 var(--sans); color: #fff0e4; text-shadow: var(--on-red); margin-top: 8px; }
+
+.reading { padding: 6px 10px 10px; border-style: solid; border-width: 30px 22px; border-image: url(../assets/ui/slip-frame.webp) 118 / 30px 22px stretch; background: var(--paper) 0 0 / 320px; color: var(--ink); box-shadow: 0 10px 22px rgba(0, 0, 0, .5); }
+.sec { padding: 14px 0 12px; border-bottom: 1px dashed rgba(168, 35, 26, .35); scroll-margin-top: 90px; }
+.sec:last-child { border-bottom: 0; }
+.sec h3 { margin: 0 0 8px; font: 700 21px/1.35 var(--kai); letter-spacing: .08em; color: var(--vermilion); }
+.pi { margin: 0 0 12px; padding: 0 0 0 12px; border-left: 3px double var(--vermilion); font: 19px/1.9 var(--ming); color: #1f130b; letter-spacing: .06em; }
+.pi span { display: block; }
+.bai { margin: 0; font: 400 16px/1.9 var(--sans); color: #33241a; }
+.reading[data-mode=pi] .bai, .reading[data-mode=pi] .reasons { display: none; }
+.reading[data-mode=bai] .pi { display: none; }
+.reasons { margin: 8px 0 0; padding-left: 1.2em; font: 14px/1.7 var(--sans); color: var(--ink-2); }
+.sec .pillars, .sec .bars { margin-bottom: 10px; }
+.actions { position: sticky; bottom: calc(-18px - var(--safe-b)); z-index: 3; margin: 0 calc(-1 * var(--pad)) calc(-18px - var(--safe-b)); padding: 8px var(--pad) calc(8px + var(--safe-b)); background: linear-gradient(rgba(0, 0, 0, .1), rgba(0, 0, 0, .35)), var(--wood) 0 0 / 300px; box-shadow: 0 -6px 12px rgba(0, 0, 0, .45); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.actions .btn.ghost { min-height: 44px; font-size: 15px; font-weight: 700; border-width: 10px 6px; border-image-width: 10px 6px; letter-spacing: 0; white-space: nowrap; }
+.actions .btn.main { grid-column: 1 / -1; }
+.actions { grid-template-columns: 1fr; }
+.after { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.after.has-ai { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.after [hidden] { display: none; }
+.after .btn.ghost { font-size: 16px; padding: 0 2px; }
+.actions [hidden] { display: none; }
+.ai-out { white-space: pre-wrap; }
+
+/* 改名 */
+.asks { display: grid; gap: 10px; }
+.ask-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: 400 16px/1.5 var(--kai); color: rgba(236, 214, 176, .92); text-shadow: var(--carve); }
+.ask-row input { width: 4.4em; min-height: 48px; font-size: 20px; text-align: center; letter-spacing: 0; border-width: 10px; border-image-width: 10px; }
+.ask-row input.long { width: 9em; text-align: left; }
+.slips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.slip { position: relative; text-align: left; padding: 4px 2px; display: grid; gap: 4px; min-height: 150px; align-content: start; border-style: solid; border-width: 16px; border-image: var(--redframe) 56 fill / 16px stretch; box-shadow: 0 8px 16px rgba(0, 0, 0, .45); transition: transform .15s; }
+.slip:active { transform: scale(.97) rotate(-1deg); }
+.slip b { font: 700 30px/1.15 var(--kai); color: #fff3d6; letter-spacing: .08em; text-shadow: var(--on-red); }
+.slip .g2 { font: 700 17px/1.2 var(--kai); letter-spacing: .06em; color: #ffe3a3; text-shadow: var(--on-red); }
+.slip small { font: 400 13px/1.6 var(--sans); color: #fff0e4; text-shadow: var(--on-red); }
+.slip .k2 { color: #ffe0b0; font-size: 12px; }
+.cmp-paper { padding: 4px 8px; }
+.cmp { width: 100%; border-collapse: collapse; font: 14px/1.45 var(--sans); color: var(--ink); }
+.cmp { table-layout: fixed; }
+.cmp th:first-child, .cmp td:first-child { width: 24%; }
+.cmp th, .cmp td { padding: 7px 2px; word-break: break-all; border-bottom: 1px dashed rgba(168, 35, 26, .35); text-align: center; }
+.cmp th { font: 700 21px/1.3 var(--kai); color: var(--vermilion); }
+.cmp td:first-child, .cmp th:first-child { text-align: left; color: var(--ink-2); }
+
+.skip { position: fixed; z-index: 40; bottom: calc(18px + var(--safe-b)); right: 16px; }
+.toast { position: fixed; z-index: 50; left: 50%; bottom: calc(80px + var(--safe-b)); transform: translateX(-50%); padding: 4px 12px; font: 400 16px/1.5 var(--kai); color: var(--ink); white-space: nowrap; box-shadow: 0 6px 14px rgba(0, 0, 0, .5); }
+@media (min-width: 600px) { .slips { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.app[data-orient=land] .slips { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* 操作區很高時（生辰帖），老師傅的話改寫在操作區頂端，不擋老師傅的臉 */
+.say-in { display: none; margin: 0; padding: 2px 8px; border-style: solid; border-width: 14px; border-image: url(../assets/ui/slip-frame.webp) 118 / 14px stretch; background: var(--paper) 0 0 / 260px; font: 400 18px/1.6 var(--kai); color: var(--ink); box-shadow: 0 4px 10px rgba(0, 0, 0, .4); }
+.say-in .q { color: var(--vermilion); font-weight: 700; }
+.app:not([data-orient=land]) .say { display: none; }
+.app:not([data-orient=land]):not(:is([data-phase=reading], [data-phase=rename], [data-phase=compare])) .say-in:not(:empty) { display: block; margin: 12px var(--pad) 0; }
+/* 寬螢幕：短頁面在右欄垂直置中，選擇牌放大 */
+.app[data-orient=land] .sheet-in { min-height: 100%; }
+.app[data-orient=land]:not(:is([data-phase=reading], [data-phase=rename], [data-phase=compare])) .sheet-in { align-content: center; padding-bottom: 64px; }
+.app[data-orient=land] .prop { min-height: 168px; }
+.app[data-orient=land] .tk .face { width: 96px; height: 226px; font-size: 48px; }
+.app[data-orient=land] .sign { width: 66px; height: 230px; }
+
+/* ───────── 動態與特效 ───────── */
+.fx { left: 0; top: 0; pointer-events: none; }
+/* 燈火搖曳：一層暖光，不規則明暗 */
+.glow { inset: 0; pointer-events: none; background: radial-gradient(ellipse 70% 38% at 50% 40%, rgba(255, 168, 86, .12), transparent 72%); animation: flicker 5.3s linear infinite; will-change: opacity; }
+@keyframes flicker { 0%, 100% { opacity: .75; } 9% { opacity: .95; } 13% { opacity: .7; } 31% { opacity: 1; } 47% { opacity: .82; } 52% { opacity: .96; } 71% { opacity: .72; } 84% { opacity: .9; } }
+/* 老師傅：輕微呼吸；換表情時新圖淡入 */
+.master .slot { position: relative; transform-origin: 50% 100%; animation: breathe 4.6s ease-in-out infinite alternate; will-change: transform; }
+.master .slot img { position: absolute; inset: 0; }
+.master .slot img.fade-in { animation: fadeIn .32s ease both; }
+@keyframes breathe { to { transform: translateY(-1.5px) scale(1.006); } }
+@keyframes fadeIn { from { opacity: 0; } }
+/* 老師傅說話：籤條輕彈；未寫出的字先透明佔位 */
+.tw-rest { color: transparent; }
+.say.pop { animation: pop .38s cubic-bezier(.3, 1.5, .5, 1); }
+@keyframes pop { from { transform: scale(.92) translateY(-4px); opacity: .4; } }
+/* 操作區換內容：依序浮起 */
+.rise:not(.hero, .reading, .birth, .slips, .rhead, .actions) { animation: rise .42s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 55ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+/* 木牌：翻一圈落桌；桌上的木牌彈一下 */
+.tk.pick .face { animation: flip .5s cubic-bezier(.3, .7, .4, 1); }
+@keyframes flip { 0% { transform: rotateY(0) translateY(0); } 50% { transform: rotateY(180deg) translateY(-22px); } 100% { transform: rotateY(360deg) translateY(0); } }
+.token.drop { animation: drop .55s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes drop { from { transform: translateY(-40px) rotate(-12deg); opacity: 0; } }
+/* 招牌：平時微微擺，點了大擺再停 */
+.sign.swing { animation: swing .9s ease-out; }
+@keyframes swing { 0% { transform: rotate(0); } 20% { transform: rotate(-7deg); } 45% { transform: rotate(4deg); } 70% { transform: rotate(-1.5deg); } 100% { transform: translateY(6px); } }
+/* 生辰帖展開 */
+.birth { transform-origin: 50% 0; animation: unfold .5s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes unfold { from { transform: scaleY(.35) translateY(-10px); opacity: 0; } }
+/* 數筆畫：五格小籤翻下來 */
+.g { transform-origin: 50% 0; }
+/* 蓋章：舞台一震 */
+.viewport.shake .canvas { animation: shake .36s; }
+@keyframes shake { 20% { translate: 0 3px; } 40% { translate: -2px -1px; } 60% { translate: 2px 1px; } 80% { translate: 0 -1px; } }
+/* 批命：評等紅紙像蓋上去，籤紙由上往下展開 */
+.hero { animation: slam .45s cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes slam { from { transform: scale(1.12); opacity: 0; } }
+.reading { transform-origin: 50% 0; animation: unroll .6s .15s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes unroll { from { opacity: 0; transform: translateY(-16px) scaleY(.94); } }
+.grid5 .g:not(.pending) { animation: tile .45s cubic-bezier(.3, 1.4, .5, 1) both; }
+.grid5 .g:nth-child(2) { animation-delay: .05s; } .grid5 .g:nth-child(3) { animation-delay: .1s; } .grid5 .g:nth-child(4) { animation-delay: .15s; } .grid5 .g:nth-child(5) { animation-delay: .2s; }
+@keyframes tile { from { transform: rotateX(85deg); opacity: 0; } }
+/* 候選紅紙：一張張發到桌上 */
+.slip { animation: deal .48s cubic-bezier(.2, .9, .3, 1.15) both; animation-delay: calc(var(--i, 0) * 90ms + 80ms); }
+@keyframes deal { from { transform: translate(30px, -60px) rotate(-14deg); opacity: 0; } }
+/* 紅紙上寫名字時的墨暈 */
+.paper-text .c.new::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; background: radial-gradient(circle, rgba(18, 7, 3, .35), transparent 70%); animation: inkbloom .6s ease-out forwards; pointer-events: none; }
+@keyframes inkbloom { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+
+/* 只給讀屏軟體的整句 */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ───────── 開場 ───────── */
+.intro { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px; background: radial-gradient(ellipse 80% 55% at 50% 42%, rgba(120, 30, 18, .55), transparent 70%), url(../assets/scene/bg.webp) center 30% / cover, var(--night); transition: opacity .8s ease, visibility .8s; }
+.intro::before { content: ""; position: absolute; inset: 0; background: rgba(8, 10, 18, .62); }
+.intro.out { opacity: 0; visibility: hidden; }
+.intro-in { position: relative; display: grid; justify-items: center; gap: 18px; text-align: center; max-width: 22em; animation: rise .9s cubic-bezier(.2, .8, .2, 1) both; }
+.intro-plaque { display: grid; place-items: center; width: min(78vw, 330px); aspect-ratio: 700 / 232; background: url(../assets/ui/plaque.webp) center / 100% 100% no-repeat; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .7)); font: 700 clamp(40px, 13vw, 56px)/1 var(--kai); letter-spacing: .3em; padding-left: .3em; color: #f3d48c; text-shadow: 0 2px 0 #000, 0 0 16px rgba(243, 212, 140, .4); }
+.intro-line { margin: 0; font: 400 clamp(17px, 4.6vw, 20px)/1.8 var(--kai); color: var(--cream); text-shadow: var(--on-wood); }
+.intro-load { width: 180px; height: 4px; background: rgba(255, 255, 255, .12); overflow: hidden; transition: opacity .4s; }
+.intro-load i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #a8231a, #e8c47a); transition: width .4s ease; }
+.intro-load.done { opacity: 0; }
+.intro .btn.main { min-width: 200px; font-size: 22px; letter-spacing: .5em; padding-left: calc(8px + .5em); }
+.intro .btn.main:disabled { filter: grayscale(.8) brightness(.6); }
+.intro-note { margin: 0; font: 13px/1.5 var(--sans); color: var(--mute); text-shadow: var(--on-wood); }
+@media (min-aspect-ratio: 1/1) and (min-width: 900px) { .intro { background-image: radial-gradient(ellipse 80% 55% at 50% 42%, rgba(120, 30, 18, .55), transparent 70%), url(../assets/scene/bg-wide.webp); } }
+.intro-line { text-wrap: balance; }
+/* 大螢幕：右欄元件整體放大，免得一張大桌子只放一小撮東西 */
+@media (min-width: 1280px) { .app[data-orient=land] .sheet-in { zoom: 1.1; } }
+@media (min-width: 1680px) { .app[data-orient=land] .sheet-in { zoom: 1.22; } .app[data-orient=land] .say { font-size: 23px; } }
+.sheet-in > * { min-width: 0; }

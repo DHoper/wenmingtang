@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1420">
+<link rel="preload" as="image" href="assets/scene/bg.webp" media="(max-aspect-ratio: 1/1)">
+<link rel="preload" as="image" href="assets/master/idle.webp">
+<title>問名堂</title>
+<link rel="artifact-thumbnail" href="thumb.jpg">
+<meta name="description" content="夜裡的廟口，算命攤前坐下，把名字交給算命先生：康熙筆畫、五格三才、八字喜用神，一張批命紅紙說分明。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cactus+Classical+Serif&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/kai.css">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<div class="app" id="app" data-phase="seat" data-orient="port">
+
+  <!-- 舞台：固定畫布，等比縮放。素材插槽由 js/assets.js 產生 -->
+  <div class="viewport" id="viewport" aria-hidden="true">
+    <div class="canvas" id="canvas">
+      <div class="pos bg" id="slotBg"></div>
+      <div class="pos glow"></div>
+      <canvas class="pos fx" id="fx"></canvas>
+      <div class="pos master" id="slotMaster"></div>
+      <div class="pos table" id="slotTable"></div>
+      <div class="pos brush" id="slotBrush"></div>
+      <div class="pos token" id="slotToken"></div>
+      <div class="pos paper" id="paper">
+        <div class="paper-art" id="slotPaper"></div>
+        <div class="paper-text" id="paperText"></div>
+        <div class="seal" id="seal">問名</div>
+      </div>
+    </div>
+  </div>
+
+  <header class="top">
+    <a class="brand" href="./">問名堂</a>
+    <div class="tools">
+      <button type="button" class="chip f-wood" id="historyBtn" hidden>上回批命</button>
+      <button type="button" class="chip f-wood" id="soundBtn" aria-pressed="true" aria-label="聲音">有聲</button>
+    </div>
+  </header>
+
+  <p class="say f-slip" id="say" aria-hidden="true"></p>
+  <p class="sr" id="sayLive" aria-live="polite"></p>
+
+  <section class="sheet" id="sheet" aria-live="polite">
+    <p class="say-in" id="sayIn" aria-hidden="true"></p>
+    <div class="sheet-in" id="act"></div>
+  </section>
+
+  <footer class="foot"><a href="NOTICE.txt">資料來源與授權</a></footer>
+</div>
+
+<div class="intro" id="intro">
+  <div class="intro-in">
+    <div class="intro-plaque">問名堂</div>
+    <p class="intro-line">廟口的算命攤，先生還沒收。<br>名字寫給他，筆畫、五格、八字幫你看。</p>
+    <div class="intro-load" id="introLoad"><i id="introBar"></i></div>
+    <button type="button" class="btn main" id="enter" disabled>入座</button>
+    <p class="intro-note">有聲音效，可在右上角關閉</p>
+  </div>
+</div>
+<noscript><p style="color:#fff;padding:2em">這個網站需要啟用 JavaScript。</p></noscript>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

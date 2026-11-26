@@ -1,0 +1,39 @@
+問名堂 資料來源與授權
+
+康熙筆畫、部首、簡繁對照、讀音
+  Unicode Han Database (Unihan)，經 npm 套件 cjk-unihan 0.0.3 取得。Unicode License v3。
+  康熙筆畫 = 康熙部首本字筆畫 + 部首外筆畫；數字字一至十依數值計。
+
+字的五行（網路通行版字義五行）
+  ben-hua/general_standard_chinese  gsc_pinyin.csv，Apache License 2.0。
+
+取名用字頻率與男女傾向、真實雙字名
+  wainshine/Chinese-Names-Corpus（萌名 NameMoe）Chinese_Names_Corpus_Gender（120W），Apache License 2.0。
+  已轉為正體並篩選。
+
+台灣常見名字
+  內政部《全國姓名統計分析》新聞稿列出的熱門名字，加上本站整理。
+
+八字排盤（節氣、干支、農曆）
+  lunar-javascript 1.7.8，6tail，MIT License（見 vendor/lunar.LICENSE.txt）。
+
+81 數理吉凶分級
+  劍靈命理網〈八十一靈動數吉凶〉；對照大紀元〈數理運勢誘導意義〉。解讀文字為本站自撰。
+
+三才配置
+  姓名網〈姓名三才數理配置吉凶表詳解〉；對照玄平〈姓名學三才配置〉。判語為本站依生剋重寫。
+
+生肖字根
+  依地支三合、六合、六沖、六害，參考多篇生肖取名文章的共同說法整理。
+
+取名字庫的字義、解讀文字、評分權重、喜用神取法的權重：本站自撰。
+
+字體
+  楷書（名字、招牌、評等、標題、按鈕、老師傅的話）：霞鶩文楷 TC（LXGW WenKai TC）標準體與中黑體，SIL Open Font License 1.1（見 fonts/LXGW-OFL.txt）。字形未修改。
+    來源 github.com/lxgw/LxgwWenkaiTC v1.530；本站切成 unicode-range 片段（fonts/kai/*.woff2）。
+  明體（文言批語）：Cactus Classical Serif，SIL Open Font License，經 Google Fonts 載入。
+  黑體（白話與介面小字）：Noto Sans TC，SIL Open Font License，經 Google Fonts 載入。
+
+
+美術素材
+- assets/ 內所有圖片（廟埕夜景、老師傅、木桌、木牌、招牌、紅紙、宣紙、按鈕木牌、匾額、印章）皆為本站以 Recraft 生成的原創插畫，再經裁切、調色、無縫處理。未使用任何實際存在的廟宇、神明或人物肖像。
