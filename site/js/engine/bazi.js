@@ -18,7 +18,7 @@ const GEN = { 木: "火", 火: "土", 土: "金", 金: "水", 水: "木" };
 const KE = { 木: "土", 土: "水", 水: "火", 火: "金", 金: "木" };
 const genBy = e => Object.keys(GEN).find(k => GEN[k] === e); // 生我者
 const keBy = e => Object.keys(KE).find(k => KE[k] === e);    // 剋我者
-export const ORGAN = { 木: "肝膽、筋骨", 火: "心血、眼目", 土: "脾胃、消化", 金: "肺與呼吸、皮膚", 水: "腎、泌尿與耳" };
+export const ORGAN = { 木: "肝膽、筋骨", 火: "心血、眼目", 土: "脾胃、消化", 金: "肺、氣管、皮膚", 水: "腎、膀胱、耳朵" };
 
 /** 十神（以五行論，不分陰陽正偏時用） */
 export function godOf(dm, e) {

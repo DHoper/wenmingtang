@@ -104,7 +104,7 @@ export function evaluate(p) {
 /** 是否主動建議改名 */
 export function shouldRename(ev) {
   const why = [];
-  if (["中下", "下"].includes(ev.grade)) why.push("整個名字的分數偏低");
+  if (["中下", "下"].includes(ev.grade)) why.push("整個名字算下來偏弱");
   if (ev.wuge.ren.lv <= -1) why.push(`人格${ev.wuge.ren.n}畫是${ev.wuge.ren.level}的數`);
   if (ev.wuge.zong.lv <= -1) why.push(`總格${ev.wuge.zong.n}畫是${ev.wuge.zong.level}的數`);
   if (ev.sancai.v <= -0.6) why.push(`三才${ev.sancai.key}配得不順`);

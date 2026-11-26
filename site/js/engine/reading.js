@@ -14,8 +14,8 @@ export function han(n) {
 }
 const INDUSTRY = {
   木: "教育、文化出版、設計、園藝、醫藥", 火: "餐飲、電子科技、傳播、美業、能源",
-  土: "不動產、建築、農業、顧問、行政管理", 金: "金融、法律、機械、五金、科技硬體",
-  水: "貿易、物流、旅遊、水產、資訊流通",
+  土: "不動產、建築、農業、仲介、顧問", 金: "金融、法律、機械、五金、科技硬體",
+  水: "貿易、物流、旅遊、水產、冷飲",
 };
 
 // 生剋文字。鍵為 relation(天格, 人格) 或 relation(人格, X)：生＝前者生後者、被生＝後者生前者、剋、被剋同理
@@ -50,22 +50,39 @@ const REN_ZONG = {
 const LV_SAY = { 2: "大吉的數", 1: "吉數", 0.5: "好的多、壞的少", "-0.5": "壞的多、好的少", "-1": "凶數", "-2": "大凶的數" };
 const SANCAI_SAY = { 大吉: "大順", 吉: "算順", 吉凶參半: "一半好一半卡", 凶多於吉: "卡卡的", 凶: "不順" };
 const ROLE_SAY = {
-  tian: "天格是祖上給的，跟著姓走，改名改不到，我只看不算分。",
-  ren: "人格是名字的心肝，你這個人、你的個性，主要看這格。",
-  di: "地格看前半生，也看家裡、看囝仔、看底下的人。",
-  wai: "外格看出外，朋友、貴人、外頭的環境，都看這格。",
-  zong: "總格看後半生，老了過得怎樣，就看這格。",
+  tian: "天格是跟著姓來的，祖上給的，改名也改不到，我看看就好，不算分。",
+  ren: "人格最要緊，看的就是你這個人。",
+  di: "地格看前半生，也看家裡、看囝仔。",
+  wai: "外格看出外，朋友、貴人都看這格。",
+  zong: "總格看後半輩子。",
 };
+// 這一格是哪幾個字加起來的，講給客人聽得懂
+function compose(k, ev) {
+  const S = ev.sInfo, G = ev.gInfo, c = x => `「${x.ch}」${han(x.strokes)}畫`;
+  const sLast = S[S.length - 1], g1 = G[0], gLast = G[G.length - 1];
+  const one = S.length === 1, single = G.length === 1;
+  const n = han(ev.wuge[k].n);
+  if (k === "tian") return one ? `你姓${c(S[0])}，單姓再加一，天格${n}畫` : `複姓${c(S[0])}加${c(S[1])}，天格${n}畫`;
+  if (k === "ren") return `姓${c(sLast)}，加上名字頭一個字${c(g1)}，人格${n}畫`;
+  if (k === "di") return single ? `名字只有一個${c(g1)}，單名再加一，地格${n}畫` : `名字${c(g1)}加${c(gLast)}，地格${n}畫`;
+  if (k === "wai") {
+    if (one && single) return `單姓單名，外格照規矩算${n}畫`;
+    if (one) return `外格看名字最後一個字，${c(gLast)}再加一，${n}畫`;
+    if (single) return `外格是複姓頭一個字${c(S[0])}再加一，${n}畫`;
+    return `外格是複姓頭一個字${c(S[0])}，加名字最後一個${c(gLast)}，${n}畫`;
+  }
+  return `整個名字${[...S, ...G].map(c).join("、")}，全部加起來，總格${n}畫`;
+}
 const SANCAI_LV = {
   大吉: "三才通順，福壽可期", 吉: "配置得宜，平順可成", 吉凶參半: "吉凶互見，成敗在人",
   凶多於吉: "氣有阻滯，宜慎宜守", 凶: "三才相戾，宜早調和",
 };
 
-function gridSection(k, g, female) {
+function gridSection(k, g, female, ev) {
   const info = GRID_INFO[k];
   const head = `${info.label}${han(g.n)}，屬${g.yang ? "陽" : "陰"}${g.el}，「${g.name}」之數，${g.level}。`;
   const pi = [head, g.pi + "。"];
-  let bai = `${ROLE_SAY[k]}你${info.label}${han(g.n)}畫，${g.n81 !== g.n ? `過了八十一，扣掉八十照${han(g.n81)}來看，` : ""}屬${g.el}，叫「${g.name}」，${LV_SAY[g.lv]}。${g.text}`;
+  let bai = `${ROLE_SAY[k]}${compose(k, ev)}，${g.n81 !== g.n ? `過了八十一，扣掉八十照${han(g.n81)}來看，` : ""}屬${g.el}，叫「${g.name}」，${LV_SAY[g.lv]}。${g.text}`;
   if (female && g.female) { pi.push("坤造逢之，剛氣稍過。"); bai += g.female; }
   if (g.disputed) bai += "這個數各派講法不太一樣，我會配別格一起看。";
   return { key: k, title: `${info.label}・${info.alias}`, pi, bai };
@@ -83,7 +100,7 @@ function headline(ev, seed) {
     if (r.lv >= 1 && sc.v >= 0.35) p.push(pick(seed, ["主運得位，三才相生", "人格當令，三才通順"]));
     else if (r.lv >= 1) p.push(pick(seed, ["主運可取，配置稍滯", "人格得數，三才未順"]));
     else if (r.lv <= -1) p.push(pick(seed, ["主運欠安，宜早調理", "人格失數，根本須補"]));
-    else p.push("主運平平，吉中帶動");
+    else p.push("主運中平，守之可安");
   }
   if (z.lv >= 1) p.push(pick(seed + "z", ["後運漸開", "晚景可期"]));
   else if (z.lv <= -1) p.push(pick(seed + "z", ["晚運宜守", "後運須防"]));
@@ -106,7 +123,7 @@ function topicSection(topic, ev, female) {
     bai.push(`問事業，我看人格跟外格。你人格「${w.ren.name}」，${w.ren.lv > 0 ? "有做得起來的底子" : "根基還要再磨一磨"}。${REN_WAI[ev.rel.renWai][1]}`);
     if (has("首領")) { pi.push("帶首領之數，宜任要職"); bai.push("名字裡帶首領的數，你適合帶人，一直聽人家的反而做不久。"); }
     if (has("藝能")) { pi.push("帶藝能之數，技藝可顯"); bai.push("帶藝能的數，靠一技之長吃飯最穩，手藝、技術、專業這條路好走。"); }
-    if (has("剛強")) bai.push("數偏硬，做事果斷，跟同事相處留一點餘地。");
+    if (has("剛強")) bai.push("數偏硬，做事果斷，跟同事講話留一點餘地。");
     if (ev.bazi) { pi.push(`用神在${ev.bazi.yong}，宜就${ev.bazi.yong}業`); bai.push(`你八字要${ev.bazi.yong}，${INDUSTRY[ev.bazi.yong]}這類屬${ev.bazi.yong}的頭路，做起來較得力。`); }
   } else if (topic === "love") {
     pi.push(REN_DI[ev.rel.renDi][0]);
@@ -123,7 +140,7 @@ function topicSection(topic, ev, female) {
       const cai = { 木: "土", 火: "金", 土: "水", 金: "木", 水: "火" }[ev.bazi.dm];
       const strong = ["身強", "偏強", "極旺"].includes(ev.bazi.strength);
       pi.push(strong ? "身旺任財，可攻可取" : "身弱財重，宜穩宜聚");
-      bai.push(`八字來看，你的財是${cai}。${strong ? "你身子夠旺，擔得起財，敢衝就有。" : "只是你身子較弱，大錢擔不住，穩穩地存，或是找人合夥較好。"}`);
+      bai.push(`照八字看，屬${cai}的就是你的財。${strong ? "你身子夠旺，擔得起財，敢衝就有。" : "只是你身子較弱，大錢擔不住，穩穩地存，或是找人合夥較好。"}`);
     }
   } else if (topic === "health") {
     const weak = ev.rel.tianRen === "剋" || ev.rel.renDi === "被剋" ? w.ren.el : null;
@@ -166,14 +183,14 @@ function summarySection(ev, topic, renameWhy) {
   }[topic] || "";
   let end;
   if (renameWhy.length) {
-    const dir = ev.bazi ? `新名字往${ev.bazi.yong}${ev.bazi.xi.length ? "、" + ev.bazi.xi[0] : ""}去找，人格落在${ev.bazi.yong}最好。` : "新名字先讓人格、總格落在吉數，三才配順。";
+    const dir = ev.bazi ? `新名字要挑屬${ev.bazi.yong}${ev.bazi.xi.length ? "、" + ev.bazi.xi[0] : ""}的，人格屬${ev.bazi.yong}最好。` : "新名字要讓人格、總格都是好數，三才也要順。";
     end = `我的意思是要改。${dir}`;
   } else end = ev.grade === "上上" || ev.grade === "上" ? "這名字好好用就好。" : "名字可以用，不一定要改。";
   const pi = [];
   if (best) pi.push(`長在${SUM[best.k][0]}`);
   if (worst) pi.push(`短在${SUM[worst.k][0]}`);
   pi.push(renameWhy.length ? "宜擇吉更易" : ev.grade === "上上" || ev.grade === "上" ? "守之可也" : "可用隨緣");
-  const bai = `總的來講，${best ? `這個名字最好的是${SUM[best.k][1]}` : "這個名字沒有特別突出的地方"}；${worst ? `最要注意的是${SUM[worst.k][2]}` : "也沒有特別要擔心的"}。${topicLine}${end}`;
+  const bai = `總的來講，${best ? `這個名字好在${SUM[best.k][1]}` : "這個名字沒有特別突出的地方"}；${worst ? `怕的是${SUM[worst.k][2]}` : "也沒有特別要擔心的"}。${topicLine}${end}`;
   return { key: "summary", title: "總結", pi: [pi.join("，") + "。"], bai };
 }
 
@@ -185,7 +202,7 @@ export function reading(p) {
   const name = [...p.surname, ...p.given].join("");
   const renameWhy = shouldRename(ev);
   const sc = ev.sancai;
-  const sections = GRID_KEYS.map(k => gridSection(k, ev.wuge[k], female));
+  const sections = GRID_KEYS.map(k => gridSection(k, ev.wuge[k], female, ev));
 
   sections.push({
     key: "sancai", title: "三才配置",
@@ -193,15 +210,15 @@ export function reading(p) {
     bai: `天、人、地三格的五行，叫三才，看一世人走得順不順。你是天${sc.key[0]}、人${sc.key[1]}、地${sc.key[2]}，${SANCAI_SAY[sc.level]}。${sc.disputed ? "這個配法各派講得不一樣，參考就好。" : ""}${TIAN_REN[ev.rel.tianRen][1]}${REN_DI[ev.rel.renDi][1]}`,
   });
   sections.push({
-    key: "outer", title: "人際與後運",
+    key: "outer", title: "出外與晚運",
     pi: [`${REN_WAI[ev.rel.renWai][0]}；${REN_ZONG[ev.rel.renZong][0]}。`],
     bai: REN_WAI[ev.rel.renWai][1] + REN_ZONG[ev.rel.renZong][1],
   });
 
   if (ev.bazi && ev.match) {
     const b = ev.bazi, m = ev.match;
-    const gl = m.grids.map(g => `${({ ren: "人格", di: "地格", zong: "總格" })[g.key]}屬${g.el}（${g.tag}）`).join("、");
-    const cl = m.chars.map(c => c.el ? `「${c.ch}」屬${c.el}（${c.tag}）` : `「${c.ch}」字五行未列`).join("、");
+    const gl = m.grids.map(g => `${({ ren: "人格", di: "地格", zong: "總格" })[g.key]}屬${g.el}是${g.tag}`).join("、");
+    const cl = m.chars.map(c => c.el ? `「${c.ch}」屬${c.el}是${c.tag}` : `「${c.ch}」查不到五行`).join("、");
     const renTag = m.grids[0].tag;
     sections.push({
       key: "bazi", title: "八字配合",
@@ -214,7 +231,7 @@ export function reading(p) {
       bai: `你生那天的天干是${b.dmGan}，屬${b.dm}，這就是你本人。八字裡幫你的力量大概${han(Math.max(1, Math.round(b.support * 10)))}成，算${b.strength}。` +
         `所以你最欠、最要的是${b.yong}，這叫用神${b.xi.length ? `；${b.xi.join("、")}也幫得到你` : ""}${b.ji.length ? `；${b.ji.join("、")}跟你不合，要避開` : ""}。` +
         `再看名字：${gl}；用的字，${cl}。` +
-        (renTag === "忌神" ? "人格偏偏落在忌神，等於每天被人叫著跟你不合的五行。名字最該動的，就是這裡。" :
+        (renTag === "忌神" ? "人格偏偏落在忌神，等於每天被人叫著跟你不合的五行。名字最該改的，就是這裡。" :
           renTag === "用神" ? "人格剛好落在用神，名字天天在替你補。好名字，根本就在這。" : ""),
       reasons: b.reasons,
     });
@@ -235,7 +252,7 @@ export function reading(p) {
     pi: [renameWhy.length ? "名有所損，宜擇吉更易。" : ev.grade === "上上" || ev.grade === "上" ? "名格俱佳，毋庸更易。" : "名可堪用，更易隨緣。"],
     bai: renameWhy.length
       ? `我老實講，${renameWhy.join("，")}。這要認真想一下。不想動戶口名簿，取個常用名，天天給人叫，也有效。`
-      : ev.grade === "上上" || ev.grade === "上" ? "這名字好好用就好，不用改。" : "名字可以用，沒有非改不可的毛病。想要更好，我擬了幾個，你參考看看。",
+      : ev.grade === "上上" || ev.grade === "上" ? "這名字好好用就好，不用改。" : "名字可以用，沒有非改不可的毛病。想要更好，我可以再幫你挑幾個看看。",
   });
 
   sections.push(summarySection(ev, topic, renameWhy));

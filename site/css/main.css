@@ -88,7 +88,7 @@ button { cursor: pointer; }
 .app[data-orient=land] .paper { left: max(34px, calc(var(--vl, 0px) + 10px)); top: 70px; width: 82px; height: 282px; }
 
 /* 灑金紅紙條（名字由程式寫上） */
-.paper-art { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(255, 190, 150, .22), transparent 75%), url(../assets/ui/redpaper-light.webp) 0 0 / 150px; border-style: solid; border-width: 7px; border-image: var(--redframe) 56 / 7px stretch; }
+.paper-art { position: absolute; inset: 0; background: url(../assets/ui/redpaper-light.webp) 0 0 / 150px; border-style: solid; border-width: 7px; border-image: var(--redframe) 56 / 7px stretch; }
 .paper-text { position: absolute; inset: 12px 0 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; writing-mode: horizontal-tb; font: 900 48px/1.1 var(--song); color: #120703; -webkit-text-stroke: .3px #120703; text-shadow: 0 0 1px rgba(18, 7, 3, .6), 0 0 10px rgba(255, 225, 190, .35); }
 .paper-text .c { position: relative; display: block; width: 1em; text-align: center; transition: color .35s, text-shadow .35s; }
 .paper-text .c.new { animation: ink .5s ease-out both; }
@@ -121,7 +121,7 @@ button { cursor: pointer; }
 .say .q { color: var(--vermilion); font-weight: 700; }
 
 /* ───────── 操作區：木桌面 ───────── */
-.sheet { position: fixed; z-index: 25; left: 0; right: 0; bottom: 0; max-height: 66dvh; overflow-y: auto; overscroll-behavior: contain; background: linear-gradient(rgba(0, 0, 0, .25), transparent 40px), var(--wood) 0 0 / 300px; border-top: 14px solid; border-image: url(../assets/ui/btn-wood.webp) 52 52 0 52 / 14px 0 0 0 stretch; box-shadow: 0 -10px 30px rgba(0, 0, 0, .6); }
+.sheet { position: fixed; z-index: 25; left: 0; right: 0; bottom: 0; max-height: 66dvh; overflow-y: auto; overscroll-behavior: contain; background: var(--wood) 0 0 / 300px; border-top: 14px solid; border-image: url(../assets/ui/btn-wood.webp) 52 52 0 52 / 14px 0 0 0 stretch; box-shadow: 0 -10px 30px rgba(0, 0, 0, .6); }
 .sheet-bg { display: none; }
 .sheet-in { position: relative; padding: 14px var(--pad) calc(18px + var(--safe-b)); display: grid; gap: 14px; }
 .app:is([data-phase=reading], [data-phase=rename], [data-phase=compare]) .sheet { top: calc(var(--top-h) + var(--safe-t) + 92px); max-height: none; }
@@ -246,7 +246,7 @@ button.g { cursor: pointer; font: inherit; }
 #countBazi .bar { color: var(--cream); } #countBazi .bar i { background: rgba(0, 0, 0, .35); } #countBazi .bar em { color: var(--mute); }
 
 /* ───────── 批命：一張籤紙 ───────── */
-.rhead { position: sticky; top: 0; z-index: 3; margin: 0 calc(-1 * var(--pad)); padding: 10px var(--pad); background: linear-gradient(rgba(0, 0, 0, .35), rgba(0, 0, 0, .1)), var(--wood) 0 0 / 300px; box-shadow: 0 6px 12px rgba(0, 0, 0, .45); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rhead { position: sticky; top: 0; z-index: 3; margin: 0 calc(-1 * var(--pad)); padding: 10px var(--pad); background: var(--wood) 0 0 / 300px; box-shadow: 0 6px 12px rgba(0, 0, 0, .45); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .app[data-orient=land] .rhead { padding-top: calc(var(--top-h) + var(--safe-t) + 4px); }
 .app[data-orient=land]:is([data-phase=reading], [data-phase=rename], [data-phase=compare]) .sheet-in { padding-top: 0; }
 .rhead .who { font: 700 20px/1.2 var(--song); letter-spacing: .08em; color: var(--gold-ink); text-shadow: var(--carve); }
@@ -272,7 +272,7 @@ button.g { cursor: pointer; font: inherit; }
 .reading[data-mode=bai] .pi { display: none; }
 .reasons { margin: 8px 0 0; padding-left: 1.2em; font: 14px/1.7 var(--sans); color: var(--ink-2); }
 .sec .pillars, .sec .bars { margin-bottom: 10px; }
-.actions { position: sticky; bottom: calc(-18px - var(--safe-b)); z-index: 3; margin: 0 calc(-1 * var(--pad)) calc(-18px - var(--safe-b)); padding: 8px var(--pad) calc(8px + var(--safe-b)); background: linear-gradient(rgba(0, 0, 0, .1), rgba(0, 0, 0, .35)), var(--wood) 0 0 / 300px; box-shadow: 0 -6px 12px rgba(0, 0, 0, .45); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.actions { position: sticky; bottom: calc(-18px - var(--safe-b)); z-index: 3; margin: 0 calc(-1 * var(--pad)) calc(-18px - var(--safe-b)); padding: 8px var(--pad) calc(8px + var(--safe-b)); background: var(--wood) 0 0 / 300px; box-shadow: 0 -6px 12px rgba(0, 0, 0, .45); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .actions .btn.ghost { min-height: 44px; font-size: 15px; font-weight: 700; border-width: 10px 6px; border-image-width: 10px 6px; letter-spacing: 0; white-space: nowrap; }
 .actions .btn.main { grid-column: 1 / -1; }
 .actions { grid-template-columns: 1fr; }
@@ -429,3 +429,43 @@ button.g { cursor: pointer; font: inherit; }
 .signs { gap: 8px; }
 .signs .sign, .app[data-orient=land] .signs .sign { width: min(66px, calc((100% - 32px) / 5)); }
 .sheet { overflow-x: hidden; } .signs { overflow-x: hidden; justify-content: space-between; }
+
+
+/* ───────── 不用程式畫的方塊：全部改成筆墨與素材 ───────── */
+/* 筆畫數：老先生用小楷寫在紅紙右側，一字一行，不加框 */
+.paper-text .n { inset-inline-end: 1px; inset-block-start: 50%; width: 1em; min-width: 0; padding: 0; background: none; border-radius: 0; box-shadow: none;
+  font: 700 12px/1.05 var(--kai); color: #ffe7a8; text-align: center; text-shadow: 0 1px 0 rgba(40, 0, 0, .95), 0 0 3px rgba(40, 0, 0, .9); word-break: break-all; }
+.paper-text .rs { padding: 0; background: none; box-shadow: none; font: 700 13px/1 var(--kai); color: #ffe7a8; text-shadow: 0 1px 0 #2a0000, 0 0 4px #2a0000, 0 0 8px rgba(42, 0, 0, .8); }
+/* 姓與名之間：一筆淡墨 */
+.paper-text .split { width: 26px; height: 5px; border: 0; background: url(../assets/ui/stroke.webp) center / 100% 100% no-repeat; opacity: .6; }
+/* 五格的五行：用該行顏色的墨字，不放色塊 */
+.g .el { background: none !important; padding: 0; margin: 1px 0; font: 900 15px/1.2 var(--song); }
+.e-木 { color: #2f5d3a; } .e-火 { color: #a8231a; } .e-土 { color: #87622c; } .e-金 { color: #75674a; } .e-水 { color: #23415e; }
+/* 八字五行力量：一筆墨，長短代表力量 */
+.bar i { height: 14px; background: url(../assets/ui/stroke.webp) left center / 100% 100% no-repeat; opacity: 1; filter: none; position: relative; }
+.bar i { background: none; }
+.bar i::before { content: ""; position: absolute; inset: 0; background: url(../assets/ui/stroke.webp) left center / 100% 100% no-repeat; opacity: .14; }
+.bar i b { position: relative; -webkit-mask: url(../assets/ui/stroke.webp) left center / var(--full, 100%) 100% no-repeat; mask: url(../assets/ui/stroke.webp) left center / var(--full, 100%) 100% no-repeat; }
+#countBazi .bar i::before { filter: invert(1); opacity: .22; }
+/* 段落分隔、對照表、批語前的線：朱筆一畫 */
+.sec { border-bottom: 0; position: relative; }
+.sec::after { content: ""; position: absolute; left: 6%; right: 6%; bottom: 0; height: 6px; background: url(../assets/ui/stroke-red.webp) center / 100% 100% no-repeat; }
+.sec:last-child::after { display: none; }
+.pi { border-left: 0; padding-left: 16px; position: relative; }
+.pi::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 5px; background: url(../assets/ui/stroke-red-v.webp) center / 100% 100% no-repeat; }
+.cmp th, .cmp td { border-bottom: 0; background: url(../assets/ui/stroke-red.webp) center bottom / 92% 4px no-repeat; }
+/* 開場載入條：一筆朱墨慢慢畫出來 */
+.intro-load { height: 10px; background: url(../assets/ui/stroke.webp) left center / 100% 100% no-repeat; filter: invert(1) opacity(.18); overflow: visible; position: relative; }
+.intro-load { filter: none; background: none; }
+.intro-load::before { content: ""; position: absolute; inset: 0; background: url(../assets/ui/stroke.webp) left center / 100% 100% no-repeat; filter: invert(1); opacity: .18; }
+.intro-load i { position: relative; background: #c8342a; -webkit-mask: url(../assets/ui/stroke.webp) left center / 180px 100% no-repeat; mask: url(../assets/ui/stroke.webp) left center / 180px 100% no-repeat; }
+
+/* 輸入框：用系統字型，打字中與打完一樣，不會跳字型（紅紙上才寫成宋體） */
+.pen input, .ask-row input { font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans CJK TC", system-ui, sans-serif; font-weight: 600; }
+
+/* 分享面板：手機上四顆改兩排 */
+@media (max-width: 520px) { .share-grid.g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .share-grid.g4 .btn { font-size: 16px; } }
+
+/* 上回批命：一張張小紅紙 */
+.slips.hist .slip { min-height: 96px; }
+.slips.hist .slip b { font-size: 24px; }

@@ -1,0 +1,368 @@
+[
+  {
+    "file": "js/main.js",
+    "old": "我幫你挑幾個，<span class=\"q\">姓不動，照筆畫跟八字配。</span>",
+    "new": "來，我幫你想幾個。<span class=\"q\">姓是祖先傳的，不換，只換名。</span>",
+    "why": "「姓不動」「照……配」是工程師講法，而且沒給生日時也不該提八字。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "<span class=\"q\">我挑幾個給你參考。</span>",
+    "new": "<span class=\"q\">我挑幾個給你看看。</span>",
+    "why": "「參考」是客套書面語，攤前講「給你看看」。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "照這些條件，我翻不到筆畫、五行都合的。保留的字、不要的字放寬一點再來。",
+    "new": "你這樣限，我翻不到筆畫、五行都合的。要留的字換一個，不要的字少寫幾個，再叫我挑。",
+    "why": "「條件」「放寬」是系統提示語，改成先生當面講的話，並具體說要怎麼改。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "筆畫、五格、三才一起看<br>給生日，再配八字",
+    "new": "筆畫、五格、三才一起看<br>有生日，連八字也看",
+    "why": "「再配八字」是流程說明腔。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "? \"姓氏\" : \"全名\"",
+    "new": "? \"小孩的姓\" : \"全名\"",
+    "why": "「姓氏」是表單欄位用語。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "看名字照康熙字典，我幫你寫成正體字了。",
+    "new": "筆畫要用康熙字典的寫法來算，我先幫你改成繁體字。",
+    "why": "原句省略太多、像系統提示；「正體字」是公文用詞，老先生講繁體。"
+  },
+  {
+    "file": "js/main.js",
+    "old": ": \"姓是哪個？\"",
+    "new": ": \"你姓哪個？\"",
+    "why": "「姓是哪個」不順，當面就問「你姓哪個」。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "<span class=\"s\">加看八字、生肖</span>",
+    "new": "<span class=\"s\">八字、生肖也看</span>",
+    "why": "「加看」是功能加購的講法。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "data-zi=\"early\">23 點起算隔天</button>",
+    "new": "data-zi=\"early\">23 點就算隔天</button>",
+    "why": "「起算」是規則條文腔，也跟下面「我照 23 點就算隔天」對上。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "data-zi=\"split\">0 點才換日</button>",
+    "new": "data-zi=\"split\">過 0 點才算隔天</button>",
+    "why": "「換日」是系統用語，兩顆講法一致比較好懂。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "\"，當年實施日光節約時間\"",
+    "new": "\"，那年有日光節約時間\"",
+    "why": "「實施」是公文腔。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "\"・不知時辰，排三柱\"",
+    "new": "\"・沒時辰，只排三柱\"",
+    "why": "補一個「只」，意思才完整。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "\"快些\"",
+    "new": "\"快一點\"",
+    "why": "「快些」不是台灣口語。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "id=\"backCmp\">回到候選名</button>",
+    "new": "id=\"backCmp\">回去挑名字</button>",
+    "why": "「候選名」是系統用語。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "id=\"cBack\">回到候選名</button>",
+    "new": "id=\"cBack\">回去挑名字</button>",
+    "why": "「候選名」是系統用語。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "把這張紅紙分享給朋友",
+    "new": "這張紅紙拿去給朋友看",
+    "why": "「分享給」是 App 用語，跟分享面板標題講法一致。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "\"請先生挑幾個新名字\"",
+    "new": "\"幫我挑新名字\"",
+    "why": "按鈕太長，縮成 6 字。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "\"香斷了，這回講不下去，等一下再試。\"",
+    "new": "\"香斷了，這回講不下去。你等一下再叫我。\"",
+    "why": "「再試」是錯誤訊息用語。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "ask-row\">保留<input",
+    "new": "ask-row\">留一個字<input",
+    "why": "「保留」是表單用語，攤前講「留一個字」。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "要留哪個字，先寫在「保留」那格。",
+    "new": "你要留哪個字，先寫在「留一個字」那格。",
+    "why": "跟改過的欄位名對上。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "自己有屬意的名字？",
+    "new": "自己有想好的名字？",
+    "why": "「屬意」太書面。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "翻字典中……",
+    "new": "我翻一下字典……",
+    "why": "「XX中」是載入提示腔。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "\"寫名字的部分就好，例如：宥廷\"",
+    "new": "\"姓不用寫，只寫名就好，像「宥廷」\"",
+    "why": "「名字的部分」「例如：」是表單說明腔。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "reason: `人格 ${ev.wuge.ren.n} ${ev.wuge.ren.level}；總格 ${ev.wuge.zong.n} ${ev.wuge.zong.level}；三才${ev.sancai.level}`",
+    "new": "reason: `人格${ev.wuge.ren.n}畫是${ev.wuge.ren.level}，總格${ev.wuge.zong.n}畫是${ev.wuge.zong.level}，三才${ev.sancai.level}。`",
+    "why": "這段接在白話後面念，原本像資料欄位，改成講出來的句子。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "擺做伙看，差在哪一目了然。",
+    "new": "擺做伙看，差在哪裡一看就知。",
+    "why": "「一目了然」是書面成語。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "[\"人格與喜用\", ",
+    "new": "[\"人格配八字\", ",
+    "why": "「喜用」客人看不懂，表格標題講白一點。"
+  },
+  {
+    "file": "js/main.js",
+    "old": ">看完整批命<",
+    "new": ">看整張批命<",
+    "why": "「完整」是介面用語。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "紅紙寫好中……",
+    "new": "紅紙正在寫……",
+    "why": "「寫好中」不通。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "替${esc(surname.join(\"\"))}家孩子取名",
+    "new": "替${esc(surname.join(\"\"))}家的孩子取名",
+    "why": "少一個「的」，念起來卡。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "朋友給先生看過的名字。你的名字，會批出什麼？",
+    "new": "這是你朋友給先生看過的名字。換你的名字，看批得怎樣。",
+    "why": "「會批出什麼？」是行銷文案腔。"
+  },
+  {
+    "file": "js/main.js",
+    "old": "評等會不太一樣。",
+    "new": "批出來會不太一樣。",
+    "why": "「評等」是系統用語，先生嘴上不講。"
+  },
+  {
+    "file": "index.html",
+    "old": "有聲音效，可在右上角關閉",
+    "new": "有聲音，嫌吵的話右上角可以關",
+    "why": "「可在……關閉」是說明書腔。"
+  },
+  {
+    "file": "index.html",
+    "old": "這個網站需要啟用 JavaScript。",
+    "new": "要開啟 JavaScript 才看得到。",
+    "why": "「這個網站需要」是系統訊息腔。"
+  },
+  {
+    "file": "index.html",
+    "old": "property=\"og:description\" content=\"夜裡的廟口，算命攤前坐下，把名字交給算命先生：康熙筆畫、五格三才、八字喜用神，一張批命紅紙說分明。",
+    "new": "property=\"og:description\" content=\"夜裡的廟口，在算命攤前坐下，把名字寫給老先生看。康熙筆畫、五格三才都算，有生日連八字也看，最後批一張紅紙給你。",
+    "why": "冒號接名詞清單、「說分明」是廣告文案腔；要跟 build_share_pages.py 的 DESC 一致。"
+  },
+  {
+    "file": "index.html",
+    "old": "name=\"description\" content=\"夜裡的廟口，算命攤前坐下，把名字交給算命先生：康熙筆畫、五格三才、八字喜用神，一張批命紅紙說分明。",
+    "new": "name=\"description\" content=\"夜裡的廟口，在算命攤前坐下，把名字寫給老先生看。康熙筆畫、五格三才都算，有生日連八字也看，最後批一張紅紙給你。",
+    "why": "同上，搜尋描述一起改。"
+  },
+  {
+    "file": "build_share_pages.py",
+    "old": "DESC = \"夜裡的廟口，算命攤前坐下，把名字交給算命先生：康熙筆畫、五格三才、八字喜用神，一張批命紅紙說分明。\"",
+    "new": "DESC = \"夜裡的廟口，在算命攤前坐下，把名字寫給老先生看。康熙筆畫、五格三才都算，有生日連八字也看，最後批一張紅紙給你。\"",
+    "why": "同 index.html，重產 OG 時才不會改回去。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "\"不動產、建築、農業、顧問、行政管理\"",
+    "new": "\"不動產、建築、農業、仲介、顧問\"",
+    "why": "「行政管理」是人力銀行分類用語。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "\"貿易、物流、旅遊、水產、資訊流通\"",
+    "new": "\"貿易、物流、旅遊、水產、冷飲\"",
+    "why": "「資訊流通」不是一門頭路，也不像算命先生講的。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "\"主運平平，吉中帶動\"",
+    "new": "\"主運中平，守之可安\"",
+    "why": "「吉中帶動」語意不通。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "跟同事相處留一點餘地。",
+    "new": "跟同事講話留一點餘地。",
+    "why": "「相處」偏概念，講具體的事。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "八字來看，你的財是${cai}。",
+    "new": "照八字看，屬${cai}的就是你的財。",
+    "why": "原句「你的財是金」太跳，客人聽不懂。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "`新名字往${ev.bazi.yong}${ev.bazi.xi.length ? \"、\" + ev.bazi.xi[0] : \"\"}去找，人格落在${ev.bazi.yong}最好。`",
+    "new": "`新名字要挑屬${ev.bazi.yong}${ev.bazi.xi.length ? \"、\" + ev.bazi.xi[0] : \"\"}的，人格屬${ev.bazi.yong}最好。`",
+    "why": "「往X去找」「落在」是演算法描述。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "\"新名字先讓人格、總格落在吉數，三才配順。\"",
+    "new": "\"新名字要讓人格、總格都是好數，三才也要順。\"",
+    "why": "「落在吉數」「配順」是規則說明腔。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "這個名字最好的是${SUM[best.k][1]}",
+    "new": "這個名字好在${SUM[best.k][1]}",
+    "why": "原本變成「最好的是你本人這格是好數」，兩個「是」疊在一起。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "最要注意的是${SUM[worst.k][2]}",
+    "new": "怕的是${SUM[worst.k][2]}",
+    "why": "「最要注意的是」是報告腔，同樣有雙「是」的問題。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "title: \"人際與後運\"",
+    "new": "title: \"出外與晚運\"",
+    "why": "「人際」是規範禁用的教科書詞。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "屬${g.el}（${g.tag}）",
+    "new": "屬${g.el}是${g.tag}",
+    "why": "規範不准括號註解。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "屬${c.el}（${c.tag}）",
+    "new": "屬${c.el}是${c.tag}",
+    "why": "規範不准括號註解。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "「${c.ch}」字五行未列",
+    "new": "「${c.ch}」查不到五行",
+    "why": "「未列」是資料表用語。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "名字最該動的，就是這裡。",
+    "new": "名字最該改的，就是這裡。",
+    "why": "「動」跟業主點名的「不動」同一種工程師講法。"
+  },
+  {
+    "file": "js/engine/reading.js",
+    "old": "想要更好，我擬了幾個，你參考看看。",
+    "new": "想要更好，我可以再幫你挑幾個看看。",
+    "why": "這時還沒挑任何名字，「我擬了幾個」不對；「參考」也是客套語。"
+  },
+  {
+    "file": "js/engine/bazi.js",
+    "old": "金: \"肺與呼吸、皮膚\"",
+    "new": "金: \"肺、氣管、皮膚\"",
+    "why": "「呼吸」是衛教講法；批語取第一項會變「宜養肺與呼吸」。"
+  },
+  {
+    "file": "js/engine/bazi.js",
+    "old": "水: \"腎、泌尿與耳\"",
+    "new": "水: \"腎、膀胱、耳朵\"",
+    "why": "「泌尿」是醫院科別用語。"
+  },
+  {
+    "file": "js/engine/analyze.js",
+    "old": "\"整個名字的分數偏低\"",
+    "new": "\"整個名字算下來偏弱\"",
+    "why": "「分數偏低」是系統評分用語，會接在「我老實講，」後面念。"
+  },
+  {
+    "file": "js/engine/rename.js",
+    "old": "`人格 ${w.ren.n} ${w.ren.level}`, `總格 ${w.zong.n} ${w.zong.level}`",
+    "new": "`人格${w.ren.n}畫是${w.ren.level}`, `總格${w.zong.n}畫是${w.zong.level}`",
+    "why": "這段在兩名對照裡當白話念，原本像資料欄位。"
+  },
+  {
+    "file": "js/engine/rename.js",
+    "old": "人格屬${w.ren.el}正合用神",
+    "new": "人格屬${w.ren.el}，正好是你要的用神",
+    "why": "講白一點，客人才知道用神是好的。"
+  },
+  {
+    "file": "js/engine/rename.js",
+    "old": "人格屬${w.ren.el}為喜神",
+    "new": "人格屬${w.ren.el}，是幫得到你的喜神",
+    "why": "「為」是書面語。"
+  },
+  {
+    "file": "js/engine/rename.js",
+    "old": "\"補喜用\"",
+    "new": "\"，補到你要的五行\"",
+    "why": "「補喜用」是術語縮寫，客人聽不懂。"
+  },
+  {
+    "file": "js/data/num81.js",
+    "old": "先見之明，理想實現；目光如炬",
+    "new": "先見之明，所圖必遂；目光如炬",
+    "why": "「理想實現」是現代詞。"
+  },
+  {
+    "file": "js/data/num81.js",
+    "old": "基礎虛弱，艱難困苦；先培其本",
+    "new": "根基虛弱，艱難困苦；先培其本",
+    "why": "「基礎」是現代詞。"
+  },
+  {
+    "file": "js/data/num81.js",
+    "old": "順時不驕，預備退步",
+    "new": "順時不驕，早留退步",
+    "why": "「預備」偏白話現代詞。"
+  }
+]

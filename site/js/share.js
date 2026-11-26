@@ -151,13 +151,12 @@ export async function drawCard(R, story = false) {
     ctx.fillStyle = "#2a1a10"; ctx.font = `900 56px ${SONG}`; ctx.fillText(String(g.n), x + gw / 2, gy + 84);
     const [bgc, fgc] = EL_COLOR[g.el];
     ctx.font = `700 24px ${SANS}`; const tw = ctx.measureText(g.el).width + 18;
-    const lvSize = g.level.length > 2 ? 21 : 26;
-    ctx.font = `700 ${lvSize}px ${SONG}`; const lw = ctx.measureText(g.level).width;
+    const lvText = ({ 吉多於凶: "半吉", 凶多於吉: "半凶" })[g.level] || g.level, lvSize = 26;
+    ctx.font = `700 ${lvSize}px ${SONG}`; const lw = ctx.measureText(lvText).width;
     const startX = x + gw / 2 - (tw + 8 + lw) / 2;
-    ctx.fillStyle = bgc; ctx.fillRect(startX, gy + 118, tw, 32);
-    ctx.font = `700 24px ${SANS}`; ctx.fillStyle = fgc; ctx.fillText(g.el, startX + tw / 2, gy + 135);
+    ctx.font = `900 28px ${SONG}`; ctx.fillStyle = bgc; ctx.fillText(g.el, startX + tw / 2, gy + 135);
     ctx.font = `700 ${lvSize}px ${SONG}`; ctx.fillStyle = g.lv >= 1 ? "#2f6b3a" : g.lv <= -1 ? "#a8231a" : "#5a4232";
-    ctx.fillText(g.level, startX + tw + 8 + lw / 2, gy + 135);
+    ctx.fillText(lvText, startX + tw + 8 + lw / 2, gy + 135);
   });
   // 頁尾
   ctx.font = `400 30px ${KAI}`; ctx.fillStyle = "rgba(246,234,212,.85)";

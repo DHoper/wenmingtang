@@ -127,12 +127,12 @@ export function suggestNames(opts) {
 
 function reasonOf(s, bazi) {
   const w = s.ev.wuge;
-  const bits = [`人格 ${w.ren.n} ${w.ren.level}`, `總格 ${w.zong.n} ${w.zong.level}`];
+  const bits = [`人格${w.ren.n}畫是${w.ren.level}`, `總格${w.zong.n}畫是${w.zong.level}`];
   if (bazi) {
-    if (w.ren.el === bazi.yong) bits.push(`人格屬${w.ren.el}正合用神`);
-    else if (bazi.xi.includes(w.ren.el)) bits.push(`人格屬${w.ren.el}為喜神`);
+    if (w.ren.el === bazi.yong) bits.push(`人格屬${w.ren.el}，正好是你要的用神`);
+    else if (bazi.xi.includes(w.ren.el)) bits.push(`人格屬${w.ren.el}，是幫得到你的喜神`);
     const helpers = s.chars.filter(c => c.wuxing && (c.wuxing === bazi.yong || bazi.xi.includes(c.wuxing))).map(c => `「${c.ch}」屬${c.wuxing}`);
-    if (helpers.length) bits.push(helpers.join("、") + "補喜用");
+    if (helpers.length) bits.push(helpers.join("、") + "，補到你要的五行");
   }
   bits.push(s.chars.map(c => `${c.ch}・${c.gloss}`).join("，"));
   return bits.join("；");
