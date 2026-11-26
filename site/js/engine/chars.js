@@ -49,3 +49,12 @@ export function tradOptions(ch) {
   if (D.k.has(ch) && D.common.has(ch)) opts.push(ch);
   return [...new Set(opts)];
 }
+
+/** AI 回答偶爾漏出簡體字：只轉不是常用正體的字（个→個、这→這），台、只、面這類本身就是正體的不動 */
+export function toTrad(t) {
+  return [...String(t)].map(c => {
+    if (c === "么") return "麼";
+    const m = D.s2t[c];
+    return m && !D.common.has(c) ? [...m][0] : c;
+  }).join("");
+}

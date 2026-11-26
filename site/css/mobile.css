@@ -198,3 +198,26 @@
 /* 寬螢幕左邊已有整個舞台，頂端頭像與台詞不重複 */
 .app[data-orient=land] .medal, .app[data-orient=land] .rsay { display: none; }
 .app[data-orient=land] .rtop { grid-template-columns: minmax(0, 1fr) auto; }
+
+/* ───── 叩問先生 ───── */
+.after { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ask { display: grid; gap: 8px; padding: 4px 8px 8px; color: var(--ink); }
+.ask[hidden] { display: none; }
+.ask-h { margin: 0; font: 900 18px/1.4 var(--song); letter-spacing: .08em; color: var(--vermilion); }
+.ask textarea { width: 100%; min-height: 64px; resize: none; padding: 6px 8px; border-style: solid; border-width: 9px; border-image: url(../assets/ui/slip-frame.webp) 118 / 9px stretch; background: #fff8ea; font: 500 17px/1.6 "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif; color: var(--ink); outline: none; }
+.ask textarea:focus { filter: drop-shadow(0 0 5px rgba(200, 120, 40, .6)); }
+.ask-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ask-foot span { font: 400 13px/1.5 var(--sans); color: var(--ink-2); }
+.ask-foot b { color: var(--vermilion); }
+.ask-foot .btn.main { flex: none; min-width: 150px; min-height: 48px; font-size: 17px; }
+.ask-log { display: grid; gap: 10px; }
+.ask-log:empty { display: none; }
+.qa { padding-bottom: 8px; background: url(../assets/ui/stroke-red.webp) center bottom / 80% 5px no-repeat; }
+.qa-q { margin: 0 0 4px; font: 700 15px/1.5 var(--kai); color: var(--ink-2); }
+.qa-a { margin: 0; white-space: pre-wrap; font: 400 17px/1.9 var(--kai); color: #1f130b; text-wrap: pretty; }
+/* 神力耗盡 */
+.share-in.limit { text-align: center; gap: 12px; padding: 14px 14px 12px; }
+.limit-seal { justify-self: center; width: 88px; height: 88px; display: grid; place-items: center; background: url(../assets/props/seal.webp) center / contain no-repeat; font: 900 24px/1.05 var(--song); color: #b01e14; letter-spacing: .1em; transform: rotate(-8deg); }
+.limit-t { margin: 0; font: 400 18px/1.8 var(--kai); color: var(--ink); text-wrap: pretty; }
+.limit-n { margin: 0; font: 400 14px/1.7 var(--sans); color: var(--ink-2); text-wrap: pretty; }
+.ask, .sec { scroll-margin-top: 66px; }

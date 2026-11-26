@@ -1,7 +1,7 @@
 // 問名堂：介面流程（手機優先；插畫舞台＋底部木桌操作區）
 // 手機版原則：一個畫面只有一個朱漆主按鈕；回上一步一律用頂列的「返」牌；
 // 舞台固定構圖（桌布上緣對齊操作區，頭頂一定露出）；批命、擬名、對照改成頂部頭像窗框，不再裁切舞台。
-import { initChars, initNames, initGivenNames, kangxi, tradOptions } from "./engine/chars.js";
+import { initChars, initNames, initGivenNames, kangxi, tradOptions, toTrad } from "./engine/chars.js";
 import { splitName } from "./engine/wuge.js";
 import { computeBazi, ZHI } from "./engine/bazi.js";
 import { reading, han } from "./engine/reading.js";
@@ -9,7 +9,7 @@ import { evaluate, GRID_INFO, GRID_KEYS } from "./engine/analyze.js";
 import { suggestNames } from "./engine/rename.js";
 import { PLACES, TOPICS, COMPOUND, AMBIGUOUS } from "./data/misc.js";
 import { slot, preload } from "./assets.js";
-import { aiAvailable, aiReading } from "./ai.js";
+import { aiAvailable, aiAsk, askLeft, LIMITS } from "./ai.js";
 import { sfx, soundOn, setSound } from "./sfx.js";
 import { particles, crossfade, typeHTML, riseOnChange, pulse, reduced } from "./fx.js";
 import { drawCard, cardBlob, shareLink, shareText, noDownload, framed } from "./share.js";
@@ -432,12 +432,16 @@ function showReading(R, opts = {}) {
     </div>
     <div class="grid5" id="grid5">${gridTiles(R, false, true)}</div>
     <p class="sancai">三才　${R.sancai.key.split("").join("・")}　${R.sancai.level}</p>
+    <div class="ask f-slip" id="askBox" hidden>
+      <p class="ask-h">還有想問的，跟先生講</p>
+      <div class="ask-log" id="askLog"></div>
+      <textarea id="askQ" rows="2" maxlength="${LIMITS.QUESTION_MAX}" placeholder="例如：這個名字適合自己做生意嗎？" aria-label="想問先生的事"></textarea>
+      <div class="ask-foot"><span id="askMeta"></span><button type="button" class="btn main" id="askGo">請先生細說</button></div>
+    </div>
     <article class="reading" id="readingBody" data-mode="${view}">
       ${R.sections.map(s => `<section class="sec" id="sec-${s.key}" data-k="${s.key}"><h3>${esc(s.title)}</h3>${s.key === "bazi" ? baziBlock(R.bazi) : ""}<p class="pi">${s.pi.map(l => `<span>${clauses(l)}</span>`).join("")}</p><p class="bai">${prose(s.bai)}</p>${s.reasons ? `<ul class="reasons">${s.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}</section>`).join("")}
-      <section class="sec" id="sec-ai" hidden><h3>先生細說</h3><p class="bai ai-out" id="aiOut"></p></section>
     </article>
     <div class="after">
-      <button type="button" class="btn ghost" id="askAI" hidden>請先生細說</button>
       <button type="button" class="btn ghost" id="shareR">分享</button>
       <button type="button" class="btn ghost" id="again">再看一個</button>
     </div>
@@ -455,17 +459,59 @@ function showReading(R, opts = {}) {
   $("#toRename").onclick = () => showRename(R);
   $("#again").onclick = () => { S.mode = "read"; S.chars = []; askName(); };
   $("#shareR").onclick = $("#shareTop").onclick = () => openShare(R);
-  aiAvailable().then(ok => {
-    const b = $("#askAI"); if (!b) return;
-    if (!ok) return;
-    b.hidden = false; b.closest(".after").classList.add("has-ai");
-    b.onclick = async () => {
-      b.disabled = true; $("#sec-ai").hidden = false; const out = $("#aiOut"); out.textContent = "先點一炷香……";
-      $("#sec-ai").scrollIntoView({ behavior: "smooth", block: "start" });
-      try { await aiReading(R, t => { out.textContent = t; }); }
-      catch (e) { out.textContent = e.code === "rate_limited" ? "今晚問的人多，等一下再來問。" : "香斷了，這回講不下去。你等一下再叫我。"; b.disabled = false; }
-    };
-  });
+  aiAvailable().then(ok => { if (ok && $("#askBox")) setupAsk(R); });
+}
+
+// ───────── 叩問先生（AI） ─────────
+function setupAsk(R) {
+  const box = $("#askBox"), q = $("#askQ"), go = $("#askGo"), meta = $("#askMeta"), log = $("#askLog");
+  box.hidden = false;
+  const sync = () => {
+    const n = [...q.value.trim()].length, left = askLeft();
+    go.textContent = n ? "叩問" : "請先生細說";
+    meta.innerHTML = `${n}／${LIMITS.QUESTION_MAX} 字・今天還能問 <b>${left}</b> 次`;
+    go.disabled = n > LIMITS.QUESTION_MAX;
+  };
+  q.oninput = sync; sync();
+  go.onclick = async () => {
+    if (askLeft() <= 0) { limitModal("user_limit"); return; }
+    const text = q.value.trim();
+    const item = document.createElement("div"); item.className = "qa";
+    item.innerHTML = `<p class="qa-q">${text ? "你問：" + esc(text) : "請先生把整張再細說一次"}</p><p class="qa-a">先點一炷香……</p>`;
+    log.append(item); const out = item.querySelector(".qa-a");
+    go.disabled = true; q.disabled = true; pose("speak"); sfx("bell");
+    item.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    try {
+      await aiAsk(R, text, t => { out.textContent = toTrad(t); });
+      q.value = "";
+    } catch (e) {
+      if (e.code === "user_limit" || e.code === "site_limit") { item.remove(); limitModal(e.code); }
+      else if (e.code === "too_long") { item.remove(); toast(`最多 ${LIMITS.QUESTION_MAX} 個字，講重點就好`); }
+      else if (e.code === "too_fast") out.textContent = "慢慢來，一次問一件。等一下再問。";
+      else out.textContent = "香斷了，這回講不下去。你等一下再叫我。";
+    }
+    pose(R.renameAdvised ? "stern" : "approve");
+    q.disabled = false; sync();
+  };
+}
+// 次數用完：神力耗盡
+function limitModal(kind) {
+  const site = kind === "site_limit";
+  const box = document.createElement("div");
+  box.className = "share";
+  box.innerHTML = `<div class="share-in f-slip limit" role="alertdialog" aria-modal="true" aria-labelledby="lmH" aria-describedby="lmT">
+      <div class="limit-seal" aria-hidden="true">${site ? "香盡" : "神倦"}</div>
+      <p class="share-h" id="lmH">神力耗盡</p>
+      <p class="limit-t" id="lmT">${site ? "今晚來問的人太多，廟裡的香都燒完了，先生也要歇了。" : `先生今天已經替你看了 ${LIMITS.USER_PER_DAY} 回，神力耗盡，要歇一下。`}</p>
+      <p class="limit-n">這是免費的網站，為了節省成本，${site ? `整個網站一天只能叩問 ${LIMITS.SITE_PER_DAY} 次` : `每個人一天只能叩問 ${LIMITS.USER_PER_DAY} 次`}。批命、擬名照樣可以看，叩問明天再來。</p>
+      <button type="button" class="btn main wide" id="lmOk">知道了</button>
+    </div>`;
+  document.body.append(box);
+  requestAnimationFrame(() => box.classList.add("on"));
+  const close = () => { box.classList.remove("on"); setTimeout(() => box.remove(), 300); };
+  box.querySelector("#lmOk").onclick = close;
+  box.onclick = e => { if (e.target === box) close(); };
+  box.querySelector("#lmOk").focus();
 }
 
 // ───────── 改名／取名 ─────────
