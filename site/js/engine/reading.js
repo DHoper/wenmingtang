@@ -50,7 +50,7 @@ const REN_ZONG = {
 const LV_SAY = { 2: "大吉的數", 1: "吉數", 0.5: "好的多、壞的少", "-0.5": "壞的多、好的少", "-1": "凶數", "-2": "大凶的數" };
 const SANCAI_SAY = { 大吉: "大順", 吉: "算順", 吉凶參半: "一半好一半卡", 凶多於吉: "卡卡的", 凶: "不順" };
 const ROLE_SAY = {
-  tian: "天格是跟著姓來的，祖上給的，改名也改不到，我看看就好，不算分。",
+  tian: "天格是跟著姓來的，祖上給的，改名也改不到，這格我看看就好，好壞都怪不到你。",
   ren: "人格最要緊，看的就是你這個人。",
   di: "地格看前半生，也看家裡、看囝仔。",
   wai: "外格看出外，朋友、貴人都看這格。",
@@ -84,7 +84,7 @@ function gridSection(k, g, female, ev) {
   const pi = [head, g.pi + "。"];
   let bai = `${ROLE_SAY[k]}${compose(k, ev)}，${g.n81 !== g.n ? `過了八十一，扣掉八十照${han(g.n81)}來看，` : ""}屬${g.el}，叫「${g.name}」，${LV_SAY[g.lv]}。${g.text}`;
   if (female && g.female) { pi.push("坤造逢之，剛氣稍過。"); bai += g.female; }
-  if (g.disputed) bai += "這個數各派講法不太一樣，我會配別格一起看。";
+  if (g.disputed) bai += "這個數，有的師父說好，有的說不好，我會配別格一起看。";
   return { key: k, title: `${info.label}・${info.alias}`, pi, bai };
 }
 
@@ -207,7 +207,7 @@ export function reading(p) {
   sections.push({
     key: "sancai", title: "三才配置",
     pi: [`天${sc.key[0]}、人${sc.key[1]}、地${sc.key[2]}，${sc.level}。`, `${TIAN_REN[ev.rel.tianRen][0]}；${REN_DI[ev.rel.renDi][0]}；${SANCAI_LV[sc.level]}。`],
-    bai: `天、人、地三格的五行，叫三才，看一世人走得順不順。你是天${sc.key[0]}、人${sc.key[1]}、地${sc.key[2]}，${SANCAI_SAY[sc.level]}。${sc.disputed ? "這個配法各派講得不一樣，參考就好。" : ""}${TIAN_REN[ev.rel.tianRen][1]}${REN_DI[ev.rel.renDi][1]}`,
+    bai: `天、人、地三格的五行，叫三才，看一世人走得順不順。你是天${sc.key[0]}、人${sc.key[1]}、地${sc.key[2]}，${SANCAI_SAY[sc.level]}。${sc.disputed ? "這個配法，師父們講的不一樣，你聽聽就好。" : ""}${TIAN_REN[ev.rel.tianRen][1]}${REN_DI[ev.rel.renDi][1]}`,
   });
   sections.push({
     key: "outer", title: "出外與晚運",
@@ -218,7 +218,7 @@ export function reading(p) {
   if (ev.bazi && ev.match) {
     const b = ev.bazi, m = ev.match;
     const gl = m.grids.map(g => `${({ ren: "人格", di: "地格", zong: "總格" })[g.key]}屬${g.el}是${g.tag}`).join("、");
-    const cl = m.chars.map(c => c.el ? `「${c.ch}」屬${c.el}是${c.tag}` : `「${c.ch}」查不到五行`).join("、");
+    const cl = m.chars.map(c => c.el ? `「${c.ch}」屬${c.el}是${c.tag}` : `「${c.ch}」五行我不敢亂斷`).join("、");
     const renTag = m.grids[0].tag;
     sections.push({
       key: "bazi", title: "八字配合",
@@ -240,8 +240,8 @@ export function reading(p) {
       key: "zodiac", title: "生肖字根",
       pi: [z.hits.length ? `肖${z.animal}，${z.hits.map(h => `「${h.ch}」${h.good ? "得" : "犯"}${h.why.replace(/（.*）/, "")}`).join("，")}。` : `肖${z.animal}，名無喜忌字根，不增不減。`],
       bai: z.hits.length
-        ? `你屬${z.animal}，生肖照立春換年算。${z.hits.map(h => `「${h.ch}」有${h.root}，${h.good ? "合到" : "犯到"}${h.why}`).join("；")}。生肖這套是另一派的講法，我只當參考，分數算得很輕。`
-        : `你屬${z.animal}，名字的字沒合到也沒犯到，不加也不扣。`,
+        ? `你屬${z.animal}，生肖照立春換年算。${z.hits.map(h => `「${h.ch}」有${h.root}，${h.good ? "合到" : "犯到"}${h.why}`).join("；")}。生肖這個，有的師父看得很重，我是順便看看，不會為了這個說你名字好壞。`
+        : `你屬${z.animal}，名字的字沒合到也沒犯到，生肖這邊沒好也沒壞。`,
     });
   }
 

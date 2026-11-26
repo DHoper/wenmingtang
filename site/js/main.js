@@ -394,7 +394,7 @@ async function count() {
   const sp = currentSplit();
   const R = reading({ surname: sp.surname, given: sp.given, gender: S.gender, topic: S.topic, bazi: S.bazi });
   S.R = R;
-  const skip = document.createElement("button"); skip.className = "btn ghost skip"; skip.textContent = "直接看結果"; skip.onclick = () => { fast = true; skip.remove(); };
+  const skip = document.createElement("button"); skip.className = "btn ghost skip"; skip.textContent = "不用等，直接看"; skip.onclick = () => { fast = true; skip.remove(); };
   document.body.append(skip);
   speak(`<span class="q">我來算一下。</span>`);
   act.innerHTML = `<div class="grid5" id="grid5">${gridTiles(R, true)}</div><p class="sancai pending" id="scLine" style="opacity:0">三才　${R.sancai.key.split("").join("・")}　${R.sancai.level}</p><div id="countBazi"></div>`;
@@ -563,7 +563,7 @@ async function showRename(R) {
   speak(line);
   act.innerHTML = `
     ${rtop(R ? `替${esc(R.name)}擬名` : `替${esc(surname.join(""))}家的孩子取名`, "", line)}
-    <div class="cond f-slip"><p class="cond-sum" id="condSum"></p><button type="button" class="opt small" id="condBtn" aria-expanded="false">改條件</button></div>
+    <div class="cond f-slip"><p class="cond-sum" id="condSum"></p><button type="button" class="opt small" id="condBtn" aria-expanded="false">換個挑法</button></div>
     <div class="cond-body f-slip" id="condBody" hidden>
       <p class="cond-row">名字取<span class="opts"><button type="button" class="opt" data-len="2">兩個字</button><button type="button" class="opt" data-len="1">一個字</button></span></p>
       <p class="cond-row">要留的字<input id="rKeepCh" placeholder="沒有" aria-label="要留的字（一個字）">放<span class="opts"><button type="button" class="opt" data-kp="0">頭一個</button><button type="button" class="opt" data-kp="1">後一個</button></span></p>
@@ -584,7 +584,7 @@ async function showRename(R) {
   act.querySelectorAll("[data-len]").forEach(b => b.onclick = () => { st.length = +b.dataset.len; if (st.length === 1 && st.keepPos === "1") st.keepPos = ""; sync(); });
   act.querySelectorAll("[data-kp]").forEach(b => b.onclick = () => { st.keepPos = st.keepPos === b.dataset.kp ? "" : b.dataset.kp; sync(); });
   $("#rFree").onclick = () => { st.leanFree = !st.leanFree; sync(); };
-  $("#condBtn").onclick = () => { const body = $("#condBody"); body.hidden = !body.hidden; $("#condBtn").setAttribute("aria-expanded", !body.hidden); $("#condBtn").textContent = body.hidden ? "改條件" : "收起來"; if (!body.hidden) body.scrollIntoView({ behavior: "smooth", block: "nearest" }); };
+  $("#condBtn").onclick = () => { const body = $("#condBody"); body.hidden = !body.hidden; $("#condBtn").setAttribute("aria-expanded", !body.hidden); $("#condBtn").textContent = body.hidden ? "換個挑法" : "收起來"; if (!body.hidden) body.scrollIntoView({ behavior: "smooth", block: "nearest" }); };
   $("#rKeepCh").value = st.keepCh; $("#rEx").value = st.exclude; sync();
   const run = async () => {
     const box = $("#slips");
@@ -601,7 +601,7 @@ async function showRename(R) {
     lastCands = [...lastCands.filter(x => x.own), ...suggestNames({ surname, gender: S.gender, bazi: S.bazi, length: st.length, keep: st.keepPos !== "" ? { pos: +st.keepPos, ch: st.keepCh } : null, exclude: ex, leanFree: st.leanFree, count: 8 })];
     renderSticks(R, surname);
   };
-  $("#rGo").onclick = () => { $("#condBody").hidden = true; $("#condBtn").textContent = "改條件"; run(); };
+  $("#rGo").onclick = () => { $("#condBody").hidden = true; $("#condBtn").textContent = "換個挑法"; run(); };
   $("#ownGo").onclick = async () => {
     await ready; await initNames(load);
     const names = $("#ownIn").value.split(/[\s,，、]+/).map(n => [...n.replace(/[^\p{Script=Han}]/gu, "")].map(x => tradOptions(x)[0])).filter(a => a.length >= 1 && a.length <= 3 && a.every(ch => kangxi(ch) !== null));

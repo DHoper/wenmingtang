@@ -4,5 +4,5 @@ export const CONFIG = {
   // 叩問先生（AI）：規格審過後再打開，填回 "https://wenming-ai.oracle-tarot.workers.dev"
   AI_ENDPOINT: "",
   // 正式網址（GitHub Pages）。分享連結與分享圖上的網址用這個；留空時用目前網頁的網址。
-  SITE_URL: "https://gxgemini777.github.io/wenmingtang/",
+  SITE_URL: "https://dhoper.github.io/wenmingtang/",
 };

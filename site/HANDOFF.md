@@ -8,7 +8,7 @@
 - 文字口吻規範：`docs/voice.md`（業主嫌太 AI，所有文字照這份寫）
 
 ## 〇、11-26 晚上最新狀態（先看這段）
-- **正式網址**：https://gxgemini777.github.io/wenmingtang/ （repo `gxgemini777/wenmingtang`，推 main 後 GitHub Actions 自動把 site/ 發布；設定在 `.github/workflows/pages.yml`）。
+- **正式網址**：https://dhoper.github.io/wenmingtang/ （repo `DHoper/wenmingtang`，推 main 後 GitHub Actions 自動把 site/ 發布；設定在 `.github/workflows/pages.yml`）。
 - **預覽**：claude.ai artifact 版本 12。**每改完一輪就要更新預覽**（業主看的是預覽，11-26 曾因沒更新被罵「講多久了還沒好」）。
 - **手機版重新設計**（設計審查 28 項全做）：固定舞台構圖、窗框頭像、頂列「返」牌、生辰帖（毛筆字＋宣紙選單，不用原生下拉）、竹籤候選名、條件抽屜、宣紙結果卡、兩名對照、分享面板、上回批命。樣式在 `css/mobile.css`，動態在 `css/motion.css`（一條減速曲線、不彈跳；操作區用 FLIP 跟舞台同步滑動）。
 - **叩問先生（AI）**：人設與規矩在 `js/ai-prompt.js`（網頁與 Worker 共用），限制每人每天 3 次、全站 200 次、50 字。超過跳「神力耗盡」。**規格在等業主審**（桌面 `問名堂_AI叩問規格_待審.pdf`），審過才：

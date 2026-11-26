@@ -24,7 +24,7 @@ export function aiBasis(R) {
   return {
     姓名: R.name, 乾坤: R.gender === "f" ? "坤造（女）" : "乾造（男）", 所問: R.sections.find(s => s.key === "topic")?.title,
     各字筆畫: R.chars.map(c => `${c.part}「${c.ch}」${c.strokes}畫`).join("、"),
-    評等: R.grade, 分數: R.score, 批語: R.headline, 白話總評: R.headlinePlain,
+    評等: R.grade, 批語: R.headline, 白話總評: R.headlinePlain,
     五格: { 天格: g("tian"), 人格: g("ren"), 地格: g("di"), 外格: g("wai"), 總格: g("zong") },
     三才: `${R.sancai.key}，${R.sancai.level}`,
     八字: R.bazi ? { 四柱: R.bazi.pillars.map(p => p.gz).join(" "), 日主: R.bazi.dmGan + R.bazi.dm, 強弱: R.bazi.strength, 用神: R.bazi.yong, 喜神: R.bazi.xi, 忌神: R.bazi.ji, 推論: R.bazi.reasons } : "沒有給生辰",

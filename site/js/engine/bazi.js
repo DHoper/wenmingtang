@@ -122,7 +122,7 @@ export function computeBazi(input, L) {
 
   const reasons = [];
   reasons.push(`你是${dmGan}${dm}，生在${monthZhi}月，${deLing ? "正當令，氣旺" : "不當令，氣較弱"}；${deDi ? "地支有根" : "地支沒根"}；${deShi ? "天干有人幫" : "天干較少人幫"}。`);
-  reasons.push(`生你、幫你的印跟比劫，算起來大概佔 ${Math.round(support * 100)}%。`);
+  reasons.push(`生你、幫你的印跟比劫，大概佔了${["不到一", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"][Math.round(support * 10)]}成。`);
 
   let strength, yong, xi = [], ji = [], pattern = "扶抑";
   const opp = ["食傷", "財", "官殺"].sort((a, b) => byGod[b] - byGod[a]);
@@ -156,7 +156,7 @@ export function computeBazi(input, L) {
     const need = season === "冬" ? "火" : "水";
     if (share[need] < 0.12) {
       tiaohou = need;
-      reasons.push(`你生在${season}天，${season === "冬" ? "天寒地凍" : "又熱又燥"}，${need}卻只有 ${Math.round(share[need] * 100)}%，先要${season === "冬" ? "暖一暖" : "潤一潤"}，所以${need}也算你要的。`);
+      reasons.push(`你生在${season}天，${season === "冬" ? "天寒地凍" : "又熱又燥"}，${need}卻少得可憐，先要${season === "冬" ? "暖一暖" : "潤一潤"}，所以${need}也算你要的。`);
       if (yong !== need) { xi = [need, ...xi.filter(e => e !== need)]; ji = ji.filter(e => e !== need); }
     }
   }
