@@ -31,7 +31,7 @@ async function bump(db, k, max) {
 const unbump = (db, k) => db.prepare("UPDATE counters SET n = n - 1 WHERE k = ? AND n > 0").bind(k).run();
 
 // ───────── 批命依據白名單：只收網頁 aiBasis() 會送的欄位，每個值限長度 ─────────
-const BASIS_KEYS = new Set(["姓名", "乾坤", "所問", "各字筆畫", "評等", "批語", "白話總評", "五格", "三才", "八字", "各段批語", "各段白話", "建議改名"]);
+const BASIS_KEYS = new Set(["姓名", "乾坤", "年紀", "名字用字", "所問", "各字筆畫", "評等", "批語", "白話總評", "五格", "三才", "八字", "各段批語", "各段白話", "建議改名"]);
 function okValue(v, depth) {
   if (typeof v === "string") return [...v].length <= 600;
   if (typeof v === "number") return true;
@@ -137,7 +137,7 @@ async function askAI(req, env, cors) {
     up = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.DEEPSEEK_API_KEY}` },
-      body: JSON.stringify({ model: env.MODEL || "deepseek-chat", messages: messagesFor(basis, question, mode), stream: true, max_tokens: mode === "reading" ? 2200 : 420, temperature: 0.85 }),
+      body: JSON.stringify({ model: env.MODEL || "deepseek-chat", messages: messagesFor(basis, question, mode), stream: true, max_tokens: mode === "reading" ? 2200 : 420, temperature: mode === "reading" ? 0.9 : 0.85 }),
     });
   } catch (_) { up = null; }
   if (!up || !up.ok || !up.body) { await refund(); return json({ error: "upstream", status: up ? up.status : 0 }, 502, cors); }

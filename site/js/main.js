@@ -575,7 +575,6 @@ function setupAsk(R) {
   q.oninput = sync; sync();
   go.onclick = async () => {
     if (fuLeft() <= 0) { limitModal("followup_limit"); return; }
-    if (askLeft() <= 0) { limitModal("user_limit"); return; }
     const text = q.value.trim();
     if (!text) return;
     const item = document.createElement("div"); item.className = "qa";

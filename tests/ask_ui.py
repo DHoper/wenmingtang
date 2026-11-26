@@ -31,7 +31,7 @@ with sync_playwright() as p:
         pg.screenshot(path=f"{out}/{w}_3_answer.png")
         mode["v"] = "user_limit"; pg.fill("#askQ", "那感情呢？"); pg.dispatch_event("#askQ", "input"); pg.click("#askGo"); pg.wait_for_selector(".limit"); pg.wait_for_timeout(500)
         pg.screenshot(path=f"{out}/{w}_4_user_limit.png"); pg.click("#lmOk"); pg.wait_for_timeout(400)
-        pg.evaluate("localStorage.removeItem('wenming:ask'); document.querySelector('#askQ').dispatchEvent(new Event('input'))"); pg.fill("#askQ", "那財運呢？"); pg.dispatch_event("#askQ", "input")
+        pg.evaluate("localStorage.removeItem('wenming:asks2'); document.querySelector('#askQ').dispatchEvent(new Event('input'))"); pg.fill("#askQ", "那財運呢？"); pg.dispatch_event("#askQ", "input")
         mode["v"] = "site_limit"; pg.click("#askGo"); pg.wait_for_selector(".limit"); pg.wait_for_timeout(500)
         pg.screenshot(path=f"{out}/{w}_5_site_limit.png")
         print(w, "errors:", errs); ctx.close()
