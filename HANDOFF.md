@@ -7,6 +7,19 @@
 - 設計文件：https://claude.ai/artifact/V2vQpJYr4PV2TCeCo7ZDad
 - 文字口吻規範：`docs/voice.md`（業主嫌太 AI，所有文字照這份寫）
 
+## 〇、11-26 晚上最新狀態（先看這段）
+- **正式網址**：https://gxgemini777.github.io/wenmingtang/ （repo `gxgemini777/wenmingtang`，推 main 後 GitHub Actions 自動把 site/ 發布；設定在 `.github/workflows/pages.yml`）。
+- **預覽**：claude.ai artifact 版本 12。**每改完一輪就要更新預覽**（業主看的是預覽，11-26 曾因沒更新被罵「講多久了還沒好」）。
+- **手機版重新設計**（設計審查 28 項全做）：固定舞台構圖、窗框頭像、頂列「返」牌、生辰帖（毛筆字＋宣紙選單，不用原生下拉）、竹籤候選名、條件抽屜、宣紙結果卡、兩名對照、分享面板、上回批命。樣式在 `css/mobile.css`，動態在 `css/motion.css`（一條減速曲線、不彈跳；操作區用 FLIP 跟舞台同步滑動）。
+- **叩問先生（AI）**：人設與規矩在 `js/ai-prompt.js`（網頁與 Worker 共用），限制每人每天 3 次、全站 200 次、50 字。超過跳「神力耗盡」。**規格在等業主審**（桌面 `問名堂_AI叩問規格_待審.pdf`），審過才：
+  1. `cd worker && npx wrangler kv namespace create LIMITS`，把 id 填進 wrangler.toml 的 `[[kv_namespaces]] binding = "LIMITS"`；
+  2. `npx wrangler deploy`（線上目前是舊版 Worker，沒有每日上限）；
+  3. `site/js/config.js` 的 `AI_ENDPOINT` 填回 Worker 網址，推上 GitHub。
+- **文字**：審查代理抓 61 句 AI 腔已改；五格白話講出是哪幾個字幾畫。新寫任何字先對照 `docs/voice.md`。
+- **素材**：Recraft 這次共用約 115 點（表情 2 張、筆墨一筆、窗框、竹籤）。
+- **測試**：`python tests/full_check.py <資料夾> 390x844 360x740 768x1024 1366x768 1920x1080`（33 個步驟、自動檢查＋截圖），`python tests/report_pdf.py <資料夾> <pdf>` 產報告；`tests/jank.py`、`tests/filmstrip.py` 查動畫抖動；`tests/ask_ui.py` 查叩問區；`node worker/review.mjs` 產生 AI 實際問答（會花 DeepSeek 次數）。
+- **金鑰**：只在 Worker 機密與 `worker/.dev.vars`（不進 git）。推 GitHub 前跑一次：`git log --all -p | grep -c sk-`，要是 0。
+
 ## 一、業主明確指示過的要點
 1. 獨立網站，和塔羅站「德爾菲神諭」分開。GitHub Pages、規則式引擎，DeepSeek 細說選配。
 2. 輸入姓名、乾坤，生辰選填；名字不佳給改名建議。取名字庫要夠大（現 1,785 字）。
@@ -65,3 +78,8 @@ idle 靜候、speak 問話、count 數筆畫、approve 點頭微笑、stern 正�
 3. 「上回批命」清單、改名條件頁還是樸素的木牌選項。
 4. 81 數理有幾條各派吉凶不一（40、50、53、27），以及象名重複（3/27、19/54），之後可再查證。
 5. 雲端那邊的開發檔（tools/ 字庫與字型建置、raw/unihan.db、art/ 美術後製、handoff/pending-reference.patch）不在這台電腦，只有 site/ 成品；那份修補檔裡的項目（直排、宋體、台詞、總結、招牌捲軸）都已在本機另行做完。
+
+15. **選單、下拉也要用美術素材**，不能出現瀏覽器原生的白色清單（11-26）。
+16. **問事招牌「綜合」放最左邊**（11-26）。
+17. 動畫、轉場不能抽搐（11-26 已整理）。
+18. AI 要照引擎規則、結合使用者叩問來回答；叩問限字數、每人每日與全站每日次數，超過顯示「神力耗盡」並說明是免費網站為了節省成本（11-26）。
