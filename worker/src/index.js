@@ -53,7 +53,7 @@ export default {
     const up = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.DEEPSEEK_API_KEY}` },
-      body: JSON.stringify({ model: env.MODEL || "deepseek-chat", messages: messagesFor(basis, question), stream: true, max_tokens: question ? 700 : 1000, temperature: 0.85 }),
+      body: JSON.stringify({ model: env.MODEL || "deepseek-chat", messages: messagesFor(basis, question), stream: true, max_tokens: question ? 420 : 650, temperature: 0.85 }),
     });
     if (!up.ok || !up.body) return json({ error: "upstream", status: up.status }, 502, cors);
     // DeepSeek 有回應才扣次數

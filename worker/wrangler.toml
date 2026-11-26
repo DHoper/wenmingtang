@@ -5,4 +5,9 @@ compatibility_date = "2025-06-01"
 [vars]
 # 允許呼叫的網站來源（逗號分隔）。GitHub Pages 上線後若網域不同，改這裡。
 ALLOWED_ORIGINS = "https://gxgemini777.github.io,https://dhoper.github.io,http://127.0.0.1:8765,http://localhost:8765"
-RATE_MAX = "12"
+USER_PER_DAY = "3"
+SITE_PER_DAY = "200"
+
+[[kv_namespaces]]
+binding = "LIMITS"
+id = "b4181e77e0c44e28adeeeeca175e77a2"

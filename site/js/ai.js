@@ -38,8 +38,17 @@ export function aiBasis(R) {
  * 叩問。onText 收到目前為止的全文。
  * 失敗時丟出 { code }：user_limit、site_limit、too_long、too_fast、unavailable、http
  */
-export async function aiAsk(R, question, onText) {
+// 回答太長時，在上限內最後一個句號處截斷
+function capText(t, max) {
+  if ([...t].length <= max) return t;
+  const cut = [...t].slice(0, max).join(""), i = Math.max(cut.lastIndexOf("。"), cut.lastIndexOf("！"), cut.lastIndexOf("？"));
+  return i > max * 0.5 ? cut.slice(0, i + 1) : cut + "……";
+}
+export async function aiAsk(R, question, onText0) {
   const q = cleanQuestion(question);
+  const max = q ? LIMITS.ANSWER_MAX_Q : LIMITS.ANSWER_MAX_ALL;
+  let capped = false;
+  const onText = t => { if (capped) return; const c = capText(t, max); if (c !== t) capped = true; onText0(c); };
   if ([...String(question || "").trim()].length > LIMITS.QUESTION_MAX) throw Object.assign(new Error("too_long"), { code: "too_long" });
   if (askLeft() <= 0) throw Object.assign(new Error("user_limit"), { code: "user_limit" });
   const sample = framed ? await getSample() : null;

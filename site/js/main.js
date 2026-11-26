@@ -22,7 +22,7 @@ const clauses = t => esc(t).split(/(?<=[，；。、！？　])/).filter(Boolean
 const prose = t => esc(t).replace(/「[^」]{1,8}」/g, m => `<span class="nw">${m}</span>`);
 const gtxt = g => g === "f" ? "坤造" : "乾造";
 // 一百以上的中文數字（民國年用）
-const num = n => n < 100 ? han(n) : "一百" + (n % 100 === 0 ? "" : n % 100 < 10 ? "零" + han(n % 100) : han(n % 100).replace(/^十/, "一十"));
+const num = n => n === 0 ? "零" : n < 100 ? han(n) : "一百" + (n % 100 === 0 ? "" : n % 100 < 10 ? "零" + han(n % 100) : han(n % 100).replace(/^十/, "一十"));
 let fast = false;
 const sleep = ms => new Promise(r => setTimeout(r, fast ? Math.min(ms, 30) : ms));
 const load = f => fetch("js/data/" + f).then(r => { if (!r.ok) throw new Error(f); return r.json(); });
@@ -260,17 +260,23 @@ function askBirth() {
 const lunarDay = d => d === 10 ? "初十" : d === 20 ? "二十" : d === 30 ? "三十" : ["初", "十", "廿"][Math.floor((d - 1) / 10)] + "一二三四五六七八九"[(d - 1) % 10];
 const LMON = ["", "正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "臘"];
 // 生辰帖的選單：不用瀏覽器原生的白色下拉，改成從下方升起的宣紙籤，選項用毛筆字、選中的畫朱線
-function openPicker(sel, title) {
-  const opts = [...sel.options].filter(o => !o.disabled);
+function openPicker(sel, title, kind = "") {
   const groups = [...sel.querySelectorAll("optgroup")];
-  const row = o => `<button type="button" class="pk-o" data-v="${esc(o.value)}" aria-pressed="${o.value === sel.value}">${esc(o.textContent)}</button>`;
-  const body = groups.length ? groups.map(g => `<p class="pk-g">${esc(g.label)}</p>${[...g.children].map(row).join("")}`).join("") : opts.map(row).join("");
+  // 每個選項拆成大字＋小字，一行排完
+  const parts = o => {
+    const t = o.textContent;
+    if (kind === "year") { const [w, roc] = t.split(/\s+/); return [roc || w, roc ? w : ""]; }  // 民國年為主，西元小字輔助
+    if (kind === "hour") { const m = t.match(/^(.+?點)（(.)時）$/); return m ? [m[1], `${m[2]}時`] : [t, ""]; }
+    return [t, ""];
+  };
+  const row = o => { const [a, b] = parts(o); return `<button type="button" class="pk-o" data-v="${esc(o.value)}" aria-pressed="${o.value === sel.value}"><b>${esc(a)}</b>${b ? `<small>${esc(b)}</small>` : ""}</button>`; };
+  const body = groups.length ? groups.map(g => `<p class="pk-g">${esc(g.label)}</p>${[...g.children].map(row).join("")}`).join("") : [...sel.options].map(row).join("");
   const box = document.createElement("div");
   box.className = "picker";
   box.innerHTML = `<div class="pk-in f-slip" role="dialog" aria-modal="true" aria-label="${esc(title)}">
       <button type="button" class="share-x" aria-label="收起來">收</button>
       <p class="pk-h">${esc(title)}</p>
-      <div class="pk-list">${body}</div>
+      <div class="pk-list pk-${kind || "short"}">${body}</div>
     </div>`;
   document.body.append(box);
   requestAnimationFrame(() => box.classList.add("on"));
@@ -307,7 +313,8 @@ function openBirthCard() {
     const sel = w.querySelector("select");
     sel.tabIndex = -1; sel.setAttribute("aria-hidden", "true");
     w.tabIndex = 0; w.setAttribute("role", "button"); w.setAttribute("aria-label", sel.getAttribute("aria-label") + "，點了可以改");
-    const open = e => { e.preventDefault(); openPicker(sel, sel.getAttribute("aria-label")); };
+    const kind = { bY: "year", bH: "hour", bP: "place", bMi: "min", bD: "day", bM: "month" }[sel.id] || "";
+    const open = e => { e.preventDefault(); openPicker(sel, sel.getAttribute("aria-label"), kind); };
     w.addEventListener("click", open);
     w.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") open(e); });
   });
@@ -316,12 +323,12 @@ function openBirthCard() {
   const nowY = new Date().getFullYear();
   const yName = y => y > 1911 ? `民國${num(y - 1911)}年` : `民前${num(1912 - y)}年`;
   Y.innerHTML = Array.from({ length: nowY + 2 - 1920 + 1 }, (_, i) => nowY + 2 - i).map(y => `<option value="${y}">${y}　${yName(y)}</option>`).join("");
-  H.innerHTML = `<option value="">不知道幾點</option>` + Array.from({ length: 24 }, (_, h) => `<option value="${h}">${h} 點（${ZHI[Math.floor((h + 1) / 2) % 12]}時）</option>`).join("");
-  Mi.innerHTML = Array.from({ length: 60 }, (_, m) => `<option value="${m}">${m} 分</option>`).join("");
+  H.innerHTML = `<option value="">不知道幾點</option>` + Array.from({ length: 24 }, (_, h) => `<option value="${h}">${num(h)}點（${ZHI[Math.floor((h + 1) / 2) % 12]}時）</option>`).join("");
+  Mi.innerHTML = Array.from({ length: 60 }, (_, m) => `<option value="${m}">${m ? num(m) + "分" : "整點"}</option>`).join("");
   P.innerHTML = `<optgroup label="臺灣">${PLACES.filter(p => p[2] === "Asia/Taipei").map(p => `<option>${p[0]}</option>`).join("")}</optgroup><optgroup label="海外">${PLACES.filter(p => p[2] !== "Asia/Taipei").map(p => `<option>${p[0]}</option>`).join("")}</optgroup>`;
   Y.value = prev?.y || (S.mode === "name" ? nowY : 1990); P.value = prev?.place || "臺北市";
   H.value = prev && prev.h !== null && prev.h !== undefined ? prev.h : ""; Mi.value = prev?.mi || 0;
-  const fillMonths = () => { const keep = +M.value || prev?.m || 1; M.innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${cal === "lunar" ? LMON[i + 1] + "月" : (i + 1) + " 月"}</option>`).join(""); M.value = keep; };
+  const fillMonths = () => { const keep = +M.value || prev?.m || 1; M.innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${cal === "lunar" ? LMON[i + 1] + "月" : num(i + 1) + "月"}</option>`).join(""); M.value = keep; };
   const fillDays = () => {
     const y = +Y.value, m = +M.value; let n = 31;
     if (cal === "solar") n = new Date(y, m, 0).getDate();
@@ -332,7 +339,7 @@ function openBirthCard() {
     } else n = 30;
     if (cal === "solar") leapBtn.hidden = true;
     const keep = +D.value || prev?.d || 1;
-    D.innerHTML = Array.from({ length: n }, (_, i) => `<option value="${i + 1}">${cal === "lunar" ? lunarDay(i + 1) : (i + 1) + " 日"}</option>`).join("");
+    D.innerHTML = Array.from({ length: n }, (_, i) => `<option value="${i + 1}">${cal === "lunar" ? lunarDay(i + 1) : num(i + 1) + "日"}</option>`).join("");
     D.value = Math.min(keep, n);
     leapBtn.setAttribute("aria-pressed", leap);
   };
@@ -356,7 +363,7 @@ function openBirthCard() {
     try {
       await loadLunar();
       const inp = input(), b = computeBazi({ ...inp, place: placeOf(inp.place) }, L), ts = b.trueSolar;
-      pv.innerHTML = `八字　<b>${b.pillars.map(p => p.gz).join("　")}</b><br>${b.lunarText.replace("腊", "臘")}${ts ? `・照當地日頭算是 ${ts.h} 點 ${ts.mi} 分` : "・沒時辰，只排三柱"}`;
+      pv.innerHTML = `八字　<b>${b.pillars.map(p => p.gz).join("　")}</b><br>${b.lunarText.replace("腊", "臘")}${ts ? `・照當地日頭算是${num(ts.h)}點${ts.mi ? num(ts.mi) + "分" : "整"}` : "・沒時辰，只排三柱"}`;
     } catch (_) { pv.textContent = "萬年曆翻不到這一天，換一天看看。"; }
   };
   const setCal = async c => { cal = c; leap = false; if (c === "lunar") await loadLunar().catch(() => {}); fillMonths(); fillDays(); update(); };
@@ -438,11 +445,12 @@ function gridTiles(R, pending, asButtons = false) {
     return `<${tag} ${asButtons ? 'type="button"' : ""} class="g${pending ? " pending" : ""}" data-k="${k}" aria-label="${GRID_INFO[k].label} ${g.n} 畫，${g.el}，${g.level}"><span class="k">${GRID_INFO[k].label}</span><span class="num">${g.n}</span><span class="el e-${g.el}">${g.el}</span><span class="lv ${cls}">${LV_SHORT[g.level] || g.level}</span></${tag}>`;
   }).join("");
 }
+const cheng = v => { const t = Math.round(v * 10); return v < 0.05 ? "幾乎沒有" : t < 1 ? "不到一成" : `約${han(t)}成`; };
 function baziBlock(b) {
   const max = Math.max(...Object.values(b.share));
   const colors = { 木: "#3f7a4b", 火: "#b8392a", 土: "#9a7434", 金: "#c9a13b", 水: "#2f5f8c" };
   return `<div class="pillars">${b.pillars.map(p => `<div class="pillar"><span>${p.name}柱</span><b>${p.gz}</b><span>${p.ganGod}</span></div>`).join("")}</div>
-    <div class="bars">${"木火土金水".split("").map(e => `<div class="bar${e === b.yong ? " yong" : ""}"><span>${e}</span><i><b style="background:${colors[e]}" data-w="${Math.round(b.share[e] / max * 100)}%"></b></i><em>${Math.round(b.share[e] * 100)}%</em></div>`).join("")}</div>`;
+    <div class="bars">${"木火土金水".split("").map(e => `<div class="bar${e === b.yong ? " yong" : ""}"><span>${e}</span><i><b style="background:${colors[e]}" data-w="${Math.round(b.share[e] / max * 100)}%"></b></i><em>${cheng(b.share[e])}</em></div>`).join("")}</div>`;
 }
 
 // ───────── 批命 ─────────

@@ -207,7 +207,7 @@ export function reading(p) {
   sections.push({
     key: "sancai", title: "三才配置",
     pi: [`天${sc.key[0]}、人${sc.key[1]}、地${sc.key[2]}，${sc.level}。`, `${TIAN_REN[ev.rel.tianRen][0]}；${REN_DI[ev.rel.renDi][0]}；${SANCAI_LV[sc.level]}。`],
-    bai: `天、人、地三格的五行，叫三才，看一世人走得順不順。你是天${sc.key[0]}、人${sc.key[1]}、地${sc.key[2]}，${SANCAI_SAY[sc.level]}。${sc.disputed ? "這個配法，師父們講的不一樣，你聽聽就好。" : ""}${TIAN_REN[ev.rel.tianRen][1]}${REN_DI[ev.rel.renDi][1]}`,
+    bai: `天、人、地三格的五行，叫三才，看一世人走得順不順。你是天${sc.key[0]}、人${sc.key[1]}、地${sc.key[2]}，${SANCAI_SAY[sc.level]}。${sc.disputed ? "這個配法，師父們講的不一樣，我照我看的講。" : ""}${TIAN_REN[ev.rel.tianRen][1]}${REN_DI[ev.rel.renDi][1]}`,
   });
   sections.push({
     key: "outer", title: "出外與晚運",

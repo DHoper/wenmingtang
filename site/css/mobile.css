@@ -242,3 +242,32 @@
 .ask-foot em { font-style: normal; color: var(--vermilion); font-weight: 700; }
 /* 木牌改成正面對稱的素材，字放正中 */
 .tk .face { padding: 22% 0 8% 0; }
+
+/* 生辰帖選單（第二版）：選項一行排完、不換行；年份一列一個；選中用朱字加小朱印，不用底線 */
+.pk-list { grid-template-columns: repeat(auto-fill, minmax(var(--pk-min, 84px), 1fr)); gap: 4px 8px; }
+.pk-year { --pk-min: 100%; }
+.pk-hour { --pk-min: 128px; }
+.pk-place { --pk-min: 96px; }
+.pk-day, .pk-month, .pk-min { --pk-min: 72px; }
+.pk-o { position: relative; display: flex; align-items: baseline; justify-content: center; gap: 10px; min-height: 48px; padding: 0 8px; white-space: nowrap; overflow: hidden; background: none !important; }
+.pk-o b { font: 700 19px/1.2 var(--song); color: inherit; }
+.pk-o small { font: 400 15px/1.2 var(--kai); color: var(--ink-2); }
+.pk-year .pk-o { justify-content: space-between; padding: 0 18px 0 30px; }
+.pk-year .pk-o + .pk-o { border-top: 0; background: url(../assets/ui/stroke.webp) center top / 88% 2px no-repeat !important; }
+.pk-o[aria-pressed=true] { color: var(--vermilion); }
+.pk-o[aria-pressed=true] small { color: var(--vermilion); }
+.pk-o[aria-pressed=true]::before { content: ""; position: absolute; left: 6px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%) rotate(-8deg); background: url(../assets/props/seal.webp) center / contain no-repeat; }
+.pk-year .pk-o[aria-pressed=true]::before { left: 8px; }
+.pk-o:hover { background: none; }
+@media (hover: hover) { .pk-o:hover b { color: var(--vermilion); } }
+.pk-year .pk-o small { font: 400 13px/1.2 var(--sans); color: rgba(90, 66, 50, .6); letter-spacing: .02em; }
+.pk-year .pk-o b { font-size: 20px; letter-spacing: .06em; }
+/* 八字五行：用毛筆字寫幾成 */
+.bar { grid-template-columns: 1.6em minmax(0, 1fr) 4.6em; }
+.bar span { font: 900 16px/1.4 var(--song); }
+.bar em { font: 400 14px/1.4 var(--kai); white-space: nowrap; }
+.tie-pv { font: 400 14px/1.7 var(--kai); }
+/* 選單選中：一筆朱紅短筆畫，不用方框 */
+.pk-o[aria-pressed=true]::before { width: 5px; height: 26px; left: 10px; transform: translateY(-50%); background: url(../assets/ui/stroke-red-v.webp) center / 100% 100% no-repeat; }
+.pk-year .pk-o + .pk-o { background: url(../assets/ui/stroke.webp) center top / 88% 2px no-repeat !important; opacity: 1; }
+.pk-year .pk-o { background-blend-mode: normal; }
