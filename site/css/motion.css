@@ -1,0 +1,62 @@
+/* ═════════ 動態整理（11-26）═════════
+   全站一條減速曲線、不彈跳；進場只用淡入加小位移，不縮放、不壓扁、不大角度翻轉。
+   舞台、紅紙、名字大小、操作區同一條曲線、同樣時間一起動。 */
+:root { --ease: cubic-bezier(.22, .61, .36, 1); --t-move: .55s; }
+
+/* 舞台與紅紙：同步滑動 */
+.canvas { transition: transform var(--t-move) var(--ease); }
+.paper { transition: top var(--t-move) var(--ease), height var(--t-move) var(--ease), left var(--t-move) var(--ease), opacity .35s var(--ease); }
+.paper-text { transition: font-size var(--t-move) var(--ease); }
+
+/* 操作區換內容：淡入、往上 8px，依序 40ms */
+.rise:not(.hero, .reading, .birth, .slips, .rhead, .actions) { animation: rise .36s var(--ease) both; animation-delay: calc(var(--i, 0) * 40ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+
+/* 結果卡、批命紙：只淡入，不縮放、不壓扁 */
+.hero { animation: fadeUp .45s var(--ease) both; }
+.reading { animation: fadeUp .45s .08s var(--ease) both; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } }
+
+/* 五格小籤：數筆畫時輕輕翻正，不衝過頭；批命頁捲動時只亮框，不跳動 */
+.grid5 .g:not(.pending) { animation: tile .38s var(--ease) both; }
+@keyframes tile { from { opacity: 0; transform: perspective(300px) rotateX(-40deg); } }
+.app[data-phase=reading] .grid5 .g:not(.pending) { animation: none; }
+.g.on { transform: none; }
+.g { transition: opacity .3s var(--ease), box-shadow .3s var(--ease); }
+
+/* 竹籤、候選名：從上方輕輕落下 */
+.stick { animation: stickIn .4s var(--ease) both; animation-delay: calc(var(--i, 0) * 45ms + 40ms); }
+@keyframes stickIn { from { opacity: 0; transform: translateY(-10px); } }
+.hist-row { animation: rise .36s var(--ease) both; animation-delay: calc(var(--i, 0) * 40ms); }
+
+/* 招牌：小幅擺動，停在垂下的位置，不再多跳一下 */
+.sign { transition: transform .35s var(--ease), opacity .3s var(--ease), filter .3s; }
+.sign.swing { animation: swing .8s var(--ease); }
+@keyframes swing { 0% { transform: translateY(0) rotate(0); } 30% { transform: translateY(8px) rotate(-4deg); } 60% { transform: translateY(8px) rotate(2deg); } 100% { transform: translateY(8px) rotate(0); } }
+
+/* 乾坤木牌：翻一圈改成側翻半圈，不再上下彈 */
+.tk { transition: transform .3s var(--ease); }
+.tk.pick .face { animation: flip .5s var(--ease); }
+@keyframes flip { 0% { transform: rotateY(0); } 50% { transform: rotateY(55deg) translateY(-6px); } 100% { transform: rotateY(0); } }
+.token.drop { animation: drop .45s var(--ease); }
+@keyframes drop { from { transform: translateY(-24px); opacity: 0; } }
+
+/* 對話條：只淡入 */
+.say.pop { animation: sayIn .3s var(--ease); }
+@keyframes sayIn { from { opacity: .3; } }
+
+/* 蓋章：保留一點力道，但不晃兩下 */
+.seal { transition: transform .3s cubic-bezier(.3, 1.25, .5, 1), opacity .2s; }
+
+/* 燈火：慢慢明暗，不閃 */
+.glow { animation: flicker 7s ease-in-out infinite; }
+@keyframes flicker { 0%, 100% { opacity: .84; } 30% { opacity: .95; } 55% { opacity: .8; } 80% { opacity: .92; } }
+
+/* 籤紙：不再「發牌」甩進來 */
+.slip { animation: stickIn .4s var(--ease) both; }
+
+/* 分享面板 */
+.share { transition: opacity .25s var(--ease); }
+.share-in { transition: transform .3s var(--ease); transform: translateY(10px); }
+
+@media (prefers-reduced-motion: reduce) { .canvas, .paper, .paper-text { transition: none; } }

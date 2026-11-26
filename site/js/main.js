@@ -47,6 +47,7 @@ function pose(p) {
 }
 pose("speak");
 
+function sheetTopNow() { return viewport.clientHeight - (parseFloat(app.style.getPropertyValue("--kb")) || 0) - sheet.offsetHeight; }
 const isRead = () => /^(reading|rename|compare)$/.test(app.dataset.phase);
 let paperH = 262;
 function layout() {
@@ -63,8 +64,8 @@ function layout() {
   } else {
     // 直式：寬度剛好填滿，桌布上緣（y=488）對齊操作區上緣；老先生頭頂（y≈160）一定在頂列下方
     const topH = app.querySelector(".top").offsetHeight;
-    const sheetTop = sheet.getBoundingClientRect().top;
-    s = Math.max(W / cw, sheetTop / 488);
+    const sheetTop = sheetTopNow();
+    s = Math.max(W / cw, sheetTop / ch);  // 寬度填滿就好；只有畫布蓋不到操作區上緣時才放大
     x = (W - cw * s) / 2;
     y = Math.min(0, sheetTop - 488 * s);
     const headTop = y + 160 * s;
@@ -85,7 +86,17 @@ function layout() {
 }
 let raf = 0;
 const relayout = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; layout(); }); };
-new ResizeObserver(relayout).observe(sheet);
+// 操作區長高時，跟舞台用同一條曲線、同樣時間一起滑上去（FLIP），不再是操作區瞬間變高、舞台慢半拍
+let lastTop = null;
+new ResizeObserver(() => {
+  const t = sheetTopNow();
+  if (lastTop !== null && !reduced && app.dataset.orient === "port" && t < lastTop - 4) {
+    sheet.style.transition = "none"; sheet.style.transform = `translateY(${(lastTop - t).toFixed(1)}px)`;
+    sheet.getBoundingClientRect();
+    sheet.style.transition = "transform .55s var(--ease)"; sheet.style.transform = "";
+  }
+  lastTop = t; relayout();
+}).observe(sheet);
 addEventListener("resize", relayout);
 new ResizeObserver(relayout).observe(viewport);
 // 手機鍵盤彈出時，操作區貼在鍵盤上面
