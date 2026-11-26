@@ -3,7 +3,7 @@
 // 金鑰放在 Worker 機密：npx wrangler secret put DEEPSEEK_API_KEY（不寫進任何檔案）。
 import { messagesFor } from "../../site/js/ai-prompt.js";
 
-const DEFAULT_ORIGINS = "https://dhoper.github.io,http://127.0.0.1:8765,http://localhost:8765";
+const DEFAULT_ORIGINS = "https://gxgemini777.github.io,https://dhoper.github.io,http://127.0.0.1:8765,http://localhost:8765";
 const hits = new Map(); // 每個 isolate 各自計數，盡力而為的限流
 
 function json(obj, status, headers) {
