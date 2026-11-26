@@ -246,7 +246,7 @@ export function reading(p) {
   }
 
   const topic = p.topic || "all";
-  sections.push({ key: "topic", title: `所問之事：${(TOPICS.find(t => t[0] === topic) || TOPICS[4])[1]}`, ...topicSection(topic, ev, female) });
+  sections.push({ key: "topic", title: `所問之事：${(TOPICS.find(t => t[0] === topic) || TOPICS.find(t => t[0] === "all"))[1]}`, ...topicSection(topic, ev, female) });
   sections.push({
     key: "rename", title: "改名與否",
     pi: [renameWhy.length ? "名有所損，宜擇吉更易。" : ev.grade === "上上" || ev.grade === "上" ? "名格俱佳，毋庸更易。" : "名可堪用，更易隨緣。"],

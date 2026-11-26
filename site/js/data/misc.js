@@ -21,5 +21,5 @@ export const PLACES = [
 ];
 
 export const TOPICS = [
-  ["career", "事業"], ["love", "感情"], ["money", "財運"], ["health", "健康"], ["all", "綜合"],
+  ["all", "綜合"], ["career", "事業"], ["love", "感情"], ["money", "財運"], ["health", "健康"],
 ];

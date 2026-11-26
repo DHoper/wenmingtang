@@ -256,6 +256,31 @@ function askBirth() {
 }
 const lunarDay = d => d === 10 ? "初十" : d === 20 ? "二十" : d === 30 ? "三十" : ["初", "十", "廿"][Math.floor((d - 1) / 10)] + "一二三四五六七八九"[(d - 1) % 10];
 const LMON = ["", "正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "臘"];
+// 生辰帖的選單：不用瀏覽器原生的白色下拉，改成從下方升起的宣紙籤，選項用毛筆字、選中的畫朱線
+function openPicker(sel, title) {
+  const opts = [...sel.options].filter(o => !o.disabled);
+  const groups = [...sel.querySelectorAll("optgroup")];
+  const row = o => `<button type="button" class="pk-o" data-v="${esc(o.value)}" aria-pressed="${o.value === sel.value}">${esc(o.textContent)}</button>`;
+  const body = groups.length ? groups.map(g => `<p class="pk-g">${esc(g.label)}</p>${[...g.children].map(row).join("")}`).join("") : opts.map(row).join("");
+  const box = document.createElement("div");
+  box.className = "picker";
+  box.innerHTML = `<div class="pk-in f-slip" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+      <button type="button" class="share-x" aria-label="收起來">收</button>
+      <p class="pk-h">${esc(title)}</p>
+      <div class="pk-list">${body}</div>
+    </div>`;
+  document.body.append(box);
+  requestAnimationFrame(() => box.classList.add("on"));
+  const cur = box.querySelector('.pk-o[aria-pressed="true"]');
+  if (cur) cur.scrollIntoView({ block: "center" });
+  (cur || box.querySelector(".pk-o"))?.focus({ preventScroll: true });
+  const onKey = e => { if (e.key === "Escape") close(); };
+  const close = () => { box.classList.remove("on"); setTimeout(() => box.remove(), 260); removeEventListener("keydown", onKey); };
+  addEventListener("keydown", onKey);
+  box.onclick = e => { if (e.target === box) close(); };
+  box.querySelector(".share-x").onclick = close;
+  box.querySelectorAll(".pk-o").forEach(b => b.onclick = () => { sel.value = b.dataset.v; sel.dispatchEvent(new Event("change")); sfx("brush"); close(); });
+}
 // 生辰帖：一張宣紙帖，用毛筆字寫出生日；每一段點了跳出手機自己的滾輪選單
 function openBirthCard() {
   setBack(askBirth);
@@ -274,6 +299,15 @@ function openBirthCard() {
     <div class="row"><button type="button" class="btn ghost" id="bCancel">先不用</button><button type="button" class="btn main" id="bOk">就這樣算</button></div>`;
   sfx("paper");
   const Y = $("#bY"), M = $("#bM"), D = $("#bD"), H = $("#bH"), Mi = $("#bMi"), P = $("#bP"), leapBtn = $("#leapBtn");
+  // 每一段字都是按鈕：點了開宣紙選單（原生下拉只留著存值，不顯示）
+  act.querySelectorAll(".w").forEach(w => {
+    const sel = w.querySelector("select");
+    sel.tabIndex = -1; sel.setAttribute("aria-hidden", "true");
+    w.tabIndex = 0; w.setAttribute("role", "button"); w.setAttribute("aria-label", sel.getAttribute("aria-label") + "，點了可以改");
+    const open = e => { e.preventDefault(); openPicker(sel, sel.getAttribute("aria-label")); };
+    w.addEventListener("click", open);
+    w.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") open(e); });
+  });
   const prev = S.birth || store.get("birth", null);
   let cal = prev?.calendar || "solar", zi = prev?.ziRule || "early", leap = !!prev?.leap;
   const nowY = new Date().getFullYear();

@@ -87,6 +87,8 @@ def run(size):
         pg.click("#giveCard"); pg.wait_for_timeout(1200)
         pg.select_option("#bY", "1961"); pg.select_option("#bM", "9"); pg.select_option("#bD", "27"); pg.select_option("#bH", "10")
         shot("birth_solar", "生辰帖：國曆 1961/9/27 10 點", 900)
+        pg.click("#tY"); pg.wait_for_selector(".picker.on"); shot("birth_picker", "生辰帖：點「年」跳出宣紙選單", 500)
+        pg.click('.pk-o[data-v="1961"]'); pg.wait_for_timeout(400)
         pg.click("#calBtn"); shot("birth_lunar", "生辰帖：切換農曆", 900)
         pg.click("#calBtn"); pg.wait_for_timeout(500)
         pg.select_option("#bY", "1961"); pg.select_option("#bM", "9"); pg.select_option("#bD", "27"); pg.select_option("#bH", "10"); pg.wait_for_timeout(300)
