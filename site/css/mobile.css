@@ -273,3 +273,25 @@
 .pk-year .pk-o { background-blend-mode: normal; }
 /* 分享面板：明信片是橫的 */
 .share-pic img { aspect-ratio: 3 / 2; max-height: none; width: 100%; }
+
+/* 朋友頁：分享者的批命重點 */
+.keys { display: grid; gap: 10px; padding: 6px 8px 8px; color: var(--ink); }
+.key { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 8px; align-items: start; padding-bottom: 8px; background: url(../assets/ui/stroke-red.webp) center bottom / 92% 4px no-repeat; }
+.key:last-of-type { background: none; padding-bottom: 0; }
+.key-l { margin: 0; font: 900 17px/1.4 var(--song); color: var(--vermilion); }
+.key-l small { display: block; font: 700 12.5px/1.4 var(--song); color: var(--ink-2); }
+.key-t { margin: 0; font: 400 16px/1.75 var(--kai); color: #24160c; text-wrap: pretty; }
+.key-note { margin: 0; font: 400 13px/1.6 var(--kai); color: var(--ink-2); text-align: center; }
+.hero.friend .hl { margin-top: 4px; }
+/* 分享面板：預覽點了放大 */
+.pic-zoom { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.pic-tip { margin: 4px 0 0; text-align: center; font: 400 13px/1.4 var(--kai); color: var(--ink-2); }
+.share-pic { display: grid; gap: 0; }
+.zoom { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; align-content: center; gap: 10px; padding: 12px; background: rgba(5, 7, 12, .92); cursor: zoom-out; }
+.zoom img { max-width: 100%; max-height: 82dvh; box-shadow: 0 10px 30px rgba(0, 0, 0, .6); }
+.zoom p { margin: 0; font: 400 15px/1.5 var(--kai); color: #f3e3c4; }
+.key { grid-template-columns: 6.6em minmax(0, 1fr); }
+.key-l small { white-space: nowrap; }
+.pen input::placeholder { letter-spacing: .08em; }
+/* 年份選單：分隔線改成淡朱細線 */
+.pk-year .pk-o + .pk-o { background: url(../assets/ui/stroke-red.webp) center top / 84% 2px no-repeat !important; }

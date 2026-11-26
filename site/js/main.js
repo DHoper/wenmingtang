@@ -12,7 +12,7 @@ import { slot, preload } from "./assets.js";
 import { aiAvailable, aiAsk, askLeft, LIMITS } from "./ai.js";
 import { sfx, soundOn, setSound } from "./sfx.js";
 import { particles, crossfade, typeHTML, riseOnChange, pulse, reduced } from "./fx.js";
-import { drawCard, drawPostcard, cardBlob, shareLink, shareText, noDownload, framed } from "./share.js";
+import { drawCard, drawPostcard, cardBlob, shareLink, shareText, noDownload, framed, keyLines, summaryLine } from "./share.js";
 {
 const $ = s => document.querySelector(s);
 const app = $("#app"), say = $("#say"), act = $("#act"), sheet = $("#sheet"), paper = $("#paper"), paperText = $("#paperText"), canvas = $("#canvas"), viewport = $("#viewport");
@@ -172,7 +172,7 @@ function askName() {
   act.innerHTML = `<form class="pen" id="penForm" autocomplete="off">
       <label class="sr" for="nameIn">${kid ? "小孩的姓" : "全名"}</label>
       ${kid ? `<p class="pen-tip">幫小孩取名：<b>只寫姓</b>，名字我來挑</p>` : ""}
-      <input id="nameIn" enterkeyhint="done" placeholder="${kid ? "只寫姓，例如：林" : "寫全名，例如：林家豪"}" value="${esc(S.chars.join(""))}">
+      <input id="nameIn" enterkeyhint="done" placeholder="${kid ? "只寫姓，例如：林" : "例如：林家豪"}" value="${esc(S.chars.join(""))}">
       <div id="nameNote"></div>
       <button type="submit" class="btn main wide" id="nameOk" disabled>${kid ? "就這個姓" : "就這個名字"}</button>
     </form>`;
@@ -715,7 +715,12 @@ async function openShare(R) {
     const blob = await cardBlob(await drawPostcard(R));
     file = new File([blob], fname, { type: "image/png" });
     url = URL.createObjectURL(blob);
-    box.querySelector("#shPic").innerHTML = `<img src="${url}" alt="${esc(R.name)}的批命明信片：${R.grade}，${esc(R.headline)}">`;
+    box.querySelector("#shPic").innerHTML = `<button type="button" class="pic-zoom" aria-label="放大看明信片"><img src="${url}" alt="${esc(R.name)}的批命明信片：${R.grade}，${esc(R.headline)}"></button><p class="pic-tip">點一下放大看</p>`;
+    box.querySelector(".pic-zoom").onclick = () => {
+      const z = document.createElement("div"); z.className = "zoom";
+      z.innerHTML = `<img src="${url}" alt=""><p>${noDownload ? "長按圖片可以存起來" : "點一下關起來"}</p>`;
+      z.onclick = () => z.remove(); document.body.append(z);
+    };
   } catch (_) { box.querySelector("#shPic").innerHTML = `<span>紅紙沒寫成，用下面的連結分享也一樣。</span>`; }
   if (canShareNative) {
     const data = file && navigator.canShare && navigator.canShare({ files: [file] }) ? { files: [file], text: text + "\n" + link } : { title: "問名堂", text, url: link };
@@ -746,13 +751,21 @@ async function showFriend(x) {
   const R0 = reading({ surname: sp.surname, given: sp.given, gender: x.g, topic: x.t, bazi: null });
   renderPaper(); $("#seal").classList.add("on");
   speak(`剛剛有人拿「${esc(x.name)}」來給我看。<span class="q">換你了，坐。</span>`);
+  const keys = keyLines(R0);
   act.innerHTML = `<div class="hero friend">
       <div class="score">${esc(x.name)}・${gtxt(x.g)}</div>
       <div class="grade">${R0.grade}</div><div class="score">${han(R0.score)}分</div>
-      <div class="hlp">${x.bazi ? "他那張有配八字，這裡只照筆畫看。" : "這是你朋友給先生看過的名字。"}</div>
-      <button type="button" class="opt small" id="seeFriend">看他這張怎麼批</button>
+      <div class="hl">${clauses(R0.headline + "。")}</div>
+      <div class="hlp">${prose(R0.headlinePlain)}</div>
     </div>
-    <button type="button" class="prop red seat-main" data-m="read"><span class="in"><span class="t">換我看名字</span><span class="s">寫下你的名字，先生算給你看</span></span></button>`;
+    <div class="grid5">${gridTiles(R0, false)}</div>
+    <div class="keys f-slip">
+      ${keys.map(k => `<div class="key"><p class="key-l">${k.label}<small>${k.grid}${han(k.n)}・${k.lvName}</small></p><p class="key-t">${prose(k.text)}</p></div>`).join("")}
+      <div class="key"><p class="key-l">先生總說</p><p class="key-t">${prose(summaryLine(R0))}</p></div>
+      ${x.bazi ? `<p class="key-note">他那張有配八字，這裡只照名字筆畫看。</p>` : ""}
+    </div>
+    <button type="button" class="prop red seat-main" data-m="read"><span class="in"><span class="t">換我看名字</span><span class="s">寫下你的名字，先生算給你看</span></span></button>
+    <div class="seat-sub"><button type="button" class="opt small" id="seeFriend">看${esc(x.name)}的整張批命</button></div>`;
   act.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { S.mode = b.dataset.m; S.chars = []; S.surnameLen = null; askName(); });
   $("#seeFriend").onclick = () => showReading(R0, { back: () => showFriend(x), say: x.bazi ? `他那張有配八字，<span class="q">我這裡只看名字。</span>` : null });
   history.replaceState(null, "", location.pathname);

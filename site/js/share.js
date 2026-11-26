@@ -175,72 +175,118 @@ function drawSpaced(ctx, text, cx, cy, sp) {
 
 export function cardBlob(cv) { return new Promise(r => cv.toBlob(r, "image/png")); }
 
-/** 明信片（1500×1000，3:2 橫式）：左邊廟埕插畫與老先生，右邊名字、評等朱印、批語、五格，右上角像郵票一樣蓋「問名堂」印 */
+/** 分享卡上的三句重點：本性看人格、出外看外格、晚運看總格，取老先生對那個數的話，前一兩句 */
+export function keyLines(R) {
+  const LV = { 2: "大吉", 1: "吉", 0.5: "半吉", "-0.5": "半凶", "-1": "凶", "-2": "大凶" };
+  const first = t => { const ps = t.split(/(?<=。)/); let o = ps[0]; if ([...o].length < 16 && ps[1]) o += ps[1]; return o; };
+  return [["本性", "人格", "ren"], ["出外", "外格", "wai"], ["晚運", "總格", "zong"]].map(([label, grid, k]) => ({ label, grid, n: R.wuge[k].n, lv: R.wuge[k].lv, lvName: LV[R.wuge[k].lv], text: first(R.wuge[k].text) }));
+}
+export function summaryLine(R) {
+  const s = R.sections.find(x => x.key === "summary");
+  return s ? s.bai.replace(/^總的來講，/, "") : R.headlinePlain;
+}
+// QR code：qrcode-generator（MIT），用到時才載入
+let qrLib = null;
+function loadQR() {
+  if (window.qrcode) return Promise.resolve(window.qrcode);
+  if (!qrLib) qrLib = new Promise(res => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"; sc.onload = () => res(window.qrcode || null); sc.onerror = () => res(null); document.head.append(sc); setTimeout(() => res(window.qrcode || null), 4000); });
+  return qrLib;
+}
+async function drawQR(ctx, text, x, y, size, color) {
+  const qr = await loadQR(); if (!qr) return false;
+  const q = qr(0, "M"); q.addData(text); q.make();
+  const n = q.getModuleCount(), cell = size / n;
+  ctx.fillStyle = color;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) ctx.fillRect(Math.round(x + c * cell), Math.round(y + r * cell), Math.ceil(cell), Math.ceil(cell));
+  return true;
+}
+const CN = "〇一二三四五六七八九";
+const cnum = n => n < 10 ? CN[n] : n < 20 ? "十" + (n % 10 ? CN[n % 10] : "") : CN[Math.floor(n / 10)] + "十" + (n % 10 ? CN[n % 10] : "");
+
+/** 明信片（1500×1000 橫式）：左邊廟埕與老先生；右邊名字、評等朱印、批語、三句重點、總結、五格與 QR code */
 export async function drawPostcard(R) {
   const W = 1500, H = 1000;
   const pose = R.renameAdvised ? "stern" : "approve";
-  const [bg, master, paper, slip, frame, red, seal, stroke] = await Promise.all([
-    "assets/scene/bg-wide.webp", `assets/master/${pose}.webp`, "assets/ui/paper.webp", "assets/ui/slip-frame.webp",
-    "assets/ui/red-frame.webp", "assets/ui/redpaper-light.webp", "assets/props/seal.webp", "assets/ui/stroke.webp",
+  const [bg, master, paper, slip, frame, seal, stroke, strokeRed] = await Promise.all([
+    "assets/scene/bg.webp", `assets/master/${pose}.webp`, "assets/ui/paper.webp", "assets/ui/slip-frame.webp",
+    "assets/ui/red-frame.webp", "assets/props/seal.webp", "assets/ui/stroke.webp", "assets/ui/stroke-red.webp",
   ].map(img));
+  const keys = keyLines(R), sum = summaryLine(R);
   await Promise.all([
-    document.fonts.load(`900 120px ${SONG}`, R.name + R.grade + "問名堂乾坤造天人地外總格"),
-    document.fonts.load(`400 40px ${KAI}`, R.headline + R.headlinePlain + "夜裡的廟口換你名字拿去給先生看看寄自"),
+    document.fonts.load(`900 120px ${SONG}`, R.name + R.grade + "問名堂乾坤造天人地外總格本性出外晚運批先生總說掃一下看你的名字" + keys.map(k => k.lvName).join("")),
+    document.fonts.load(`400 40px ${KAI}`, R.headline + keys.map(k => k.text).join("") + sum + "夜裡的廟口把名字交給算命先生掃一下看你的名字"),
   ]).catch(() => {});
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
-  const ctx = cv.getContext("2d"); ctx.textBaseline = "middle";
-  // 卡紙：宣紙平鋪＋籤紙框
+  const ctx = cv.getContext("2d"); ctx.textBaseline = "middle"; ctx.textAlign = "left";
   tile(ctx, paper, 0, 0, W, H, 360);
   nine(ctx, slip, 118, 0, 0, W, H, 44);
-  // 左：插畫框
-  const px = 64, py = 64, pw = 700, ph = H - 128;
+  // 左：插畫
+  const px = 62, py = 62, pw = 470, ph = H - 124;
   ctx.save(); ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip();
   const s = Math.max(pw / bg.naturalWidth, ph / bg.naturalHeight);
-  ctx.drawImage(bg, px + (pw - bg.naturalWidth * s) / 2, py + (ph - bg.naturalHeight * s) / 2, bg.naturalWidth * s, bg.naturalHeight * s);
-  const g = ctx.createLinearGradient(0, py, 0, py + ph); g.addColorStop(0, "rgba(10,12,20,.05)"); g.addColorStop(1, "rgba(10,12,20,.55)");
+  ctx.drawImage(bg, px + (pw - bg.naturalWidth * s) / 2, py - 40, bg.naturalWidth * s, bg.naturalHeight * s);
+  const g = ctx.createLinearGradient(0, py, 0, py + ph); g.addColorStop(0, "rgba(10,12,20,0)"); g.addColorStop(.62, "rgba(10,12,20,.1)"); g.addColorStop(1, "rgba(10,12,20,.75)");
   ctx.fillStyle = g; ctx.fillRect(px, py, pw, ph);
-  const mh = ph * .86, mw = mh * master.naturalWidth / master.naturalHeight;
-  ctx.drawImage(master, px + (pw - mw) / 2, py + ph - mh + 18, mw, mh);
+  const mw = pw * 1.18, mh = mw * master.naturalHeight / master.naturalWidth;
+  ctx.drawImage(master, px + (pw - mw) / 2, py + ph * .36, mw, mh);
   ctx.restore();
   nine(ctx, frame, 56, px - 10, py - 10, pw + 20, ph + 20, 18, true);
-  // 插畫上的字：問名堂
-  ctx.textAlign = "left"; ctx.font = `900 54px ${SONG}`; ctx.fillStyle = "#f3d48c";
-  ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 10; ctx.fillText("問　名　堂", px + 36, py + ph - 70);
-  ctx.font = `400 26px ${KAI}`; ctx.fillStyle = "#f6ead4"; ctx.fillText("夜裡的廟口，把名字交給算命先生", px + 38, py + ph - 26); ctx.shadowColor = "transparent";
-  // 右：郵票位置蓋印（評等）
-  const rx = 820, rw = W - rx - 70;
-  ctx.save(); ctx.translate(W - 150, 170); ctx.rotate(-0.12);
-  ctx.globalAlpha = .95; ctx.drawImage(seal, -96, -96, 192, 192); ctx.globalAlpha = 1;
-  ctx.textAlign = "center"; ctx.fillStyle = "#a8231a"; ctx.font = `900 ${R.grade.length > 1 ? 64 : 84}px ${SONG}`;
+  ctx.shadowColor = "rgba(0,0,0,.85)"; ctx.shadowBlur = 12;
+  ctx.font = `900 64px ${SONG}`; ctx.fillStyle = "#f3d48c"; ctx.fillText("問名堂", px + 36, py + ph - 104);
+  ctx.font = `400 24px ${KAI}`; ctx.fillStyle = "#f6ead4"; ctx.fillText("夜裡的廟口，把名字交給算命先生", px + 38, py + ph - 58);
+  ctx.font = `500 20px ${SANS}`; ctx.fillStyle = "#e8c47a"; ctx.fillText(siteURL().replace(/^https?:\/\//, "").replace(/\/$/, ""), px + 38, py + ph - 24);
+  ctx.shadowColor = "transparent";
+  // 右上：評等朱印
+  const rx = 586, rr = W - 70, rw = rr - rx;
+  ctx.save(); ctx.translate(rr - 92, 150); ctx.rotate(-0.1);
+  ctx.drawImage(seal, -92, -92, 184, 184);
+  ctx.textAlign = "center"; ctx.fillStyle = "#a8231a"; ctx.font = `900 ${R.grade.length > 1 ? 62 : 86}px ${SONG}`;
   if (R.grade.length > 1) { ctx.fillText(R.grade[0], 0, -30); ctx.fillText(R.grade.slice(1), 0, 38); } else ctx.fillText(R.grade, 0, 4);
   ctx.restore();
-  // 名字（宋體大字）與乾坤
-  ctx.textAlign = "left"; ctx.fillStyle = "#1c0f08";
-  const nameStr = [...R.name].join(" "), roomW = W - 280 - rx;  // 留給右上角朱印
-  let fs = 116; ctx.font = `900 ${fs}px ${SONG}`;
+  // 名字
+  const nameStr = [...R.name].join(" "), roomW = rw - 220;
+  let fs = 104; ctx.font = `900 ${fs}px ${SONG}`; ctx.fillStyle = "#1c0f08";
   while (ctx.measureText(nameStr).width > roomW && fs > 60) { fs -= 4; ctx.font = `900 ${fs}px ${SONG}`; }
-  ctx.fillText(nameStr, rx, 170);
-  ctx.font = `400 30px ${KAI}`; ctx.fillStyle = "#5a4232"; ctx.fillText((R.gender === "f" ? "坤造" : "乾造") + "　問名堂批", rx + 4, 262);
-  // 批語（文言）：逗號分行，朱筆左線
-  ctx.font = `400 46px ${KAI}`; ctx.fillStyle = "#2a1a10";
-  const lines = R.headline.split("，"); lines.forEach((t, i) => ctx.fillText(t + (i < lines.length - 1 ? "，" : "。"), rx + 24, 340 + i * 64));
-  ctx.fillStyle = "#a8231a"; ctx.fillRect(rx, 312, 5, lines.length * 64 - 8);
-  // 白話一句
-  ctx.font = `400 28px ${KAI}`; ctx.fillStyle = "#4a3526";
-  wrap(ctx, R.headlinePlain, rw - 10).slice(0, 2).forEach((t, i) => ctx.fillText(t, rx, 340 + lines.length * 64 + 18 + i * 42));
-  // 五格：一列小字
-  const gy = 650; ctx.font = `700 26px ${SONG}`;
+  ctx.fillText(nameStr, rx, 132);
+  ctx.font = `400 27px ${KAI}`; ctx.fillStyle = "#6b5443"; ctx.fillText(`${R.gender === "f" ? "坤造" : "乾造"}・問名堂批`, rx + 4, 212);
+  // 批語：一行（放不下就兩行）
+  ctx.font = `400 40px ${KAI}`; ctx.fillStyle = "#2a1a10";
+  const hl = R.headline + "。"; let hlLines = [hl];
+  if (ctx.measureText(hl).width > rw - 30) { const parts = R.headline.split("，"); const mid = Math.ceil(parts.length / 2); hlLines = [parts.slice(0, mid).join("，") + "，", parts.slice(mid).join("，") + "。"]; }
+  hlLines.forEach((t, i) => ctx.fillText(t, rx + 24, 276 + i * 54));
+  ctx.fillStyle = "#a8231a"; ctx.fillRect(rx, 252, 5, hlLines.length * 54 - 6);
+  // 三句重點
+  let y = 276 + hlLines.length * 54 + 30;
+  for (const k of keys) {
+    ctx.drawImage(strokeRed, rx, y - 22, rw, 5);
+    ctx.font = `900 30px ${SONG}`; ctx.fillStyle = "#a8231a"; ctx.fillText(k.label, rx, y + 14);
+    ctx.font = `700 21px ${SONG}`; ctx.fillStyle = "#6b5443"; ctx.fillText(`${k.grid}${cnum(k.n)}・${k.lvName}`, rx, y + 48);
+    ctx.font = `400 27px ${KAI}`; ctx.fillStyle = "#24160c";
+    wrap(ctx, k.text, rw - 150).slice(0, 2).forEach((t, i) => ctx.fillText(t, rx + 140, y + 14 + i * 38));
+    y += 104;
+  }
+  // 總結
+  ctx.drawImage(strokeRed, rx, y - 22, rw, 5);
+  ctx.font = `900 26px ${SONG}`; ctx.fillStyle = "#a8231a"; ctx.fillText("先生總說", rx, y + 14);
+  ctx.font = `400 25px ${KAI}`; ctx.fillStyle = "#3a2618";
+  // 最多三行，而且在句號斷開
+  let sumT = sum, sl = wrap(ctx, sumT, rw - 150);
+  while (sl.length > 3) { const i = sumT.slice(0, -1).lastIndexOf("。"); if (i < 0) break; sumT = sumT.slice(0, i + 1); sl = wrap(ctx, sumT, rw - 150); }
+  sl.slice(0, 3).forEach((t, i) => ctx.fillText(t, rx + 140, y + 14 + i * 36));
+  // 底部：五格與 QR
+  const by = H - 128;
   ["tian", "ren", "di", "wai", "zong"].forEach((k, i) => {
-    const gg = R.wuge[k], x = rx + i * (rw / 5);
-    ctx.fillStyle = "#6b5443"; ctx.fillText({ tian: "天格", ren: "人格", di: "地格", wai: "外格", zong: "總格" }[k], x, gy);
-    ctx.fillStyle = "#1c0f08"; ctx.font = `900 40px ${SONG}`; ctx.fillText(String(gg.n), x, gy + 44); ctx.font = `700 26px ${SONG}`;
-    ctx.fillStyle = gg.lv >= 1 ? "#2f6b3a" : gg.lv <= -1 ? "#a8231a" : "#5a4232";
-    ctx.fillText(({ 吉多於凶: "半吉", 凶多於吉: "半凶" })[gg.level] || gg.level, x, gy + 86);
+    const gg = R.wuge[k], x = rx + i * 104;
+    ctx.font = `700 20px ${SONG}`; ctx.fillStyle = "#6b5443"; ctx.fillText({ tian: "天格", ren: "人格", di: "地格", wai: "外格", zong: "總格" }[k], x, by);
+    ctx.font = `900 36px ${SONG}`; ctx.fillStyle = "#1c0f08"; ctx.fillText(String(gg.n), x, by + 38);
+    ctx.font = `700 19px ${SONG}`; ctx.fillStyle = gg.lv >= 1 ? "#2f6b3a" : gg.lv <= -1 ? "#a8231a" : "#5a4232";
+    ctx.fillText(({ 吉多於凶: "半吉", 凶多於吉: "半凶" })[gg.level] || gg.level, x, by + 72);
   });
-  // 明信片書寫線與寄語
-  ctx.globalAlpha = .35; [826, 886].forEach(y => ctx.drawImage(stroke, rx, y, rw, 4)); ctx.globalAlpha = 1;
-  ctx.font = `400 32px ${KAI}`; ctx.fillStyle = "#3a2618"; ctx.fillText("換你，名字拿去給先生看看。", rx, 806);
-  ctx.font = `500 24px ${SANS}`; ctx.fillStyle = "#8a6a3a";
-  ctx.fillText(siteURL().replace(/^https?:\/\//, "").replace(/\/$/, ""), rx, 866);
+  const qs = 112, qx = rr - qs, qy = H - 62 - qs;
+  const ok = await drawQR(ctx, shareLink(R), qx, qy, qs, "#2a1408").catch(() => false);
+  ctx.textAlign = "right"; ctx.font = `400 24px ${KAI}`; ctx.fillStyle = "#3a2618";
+  if (ok) { ctx.fillText("掃一下，", qx - 18, qy + 40); ctx.fillText("看你的名字", qx - 18, qy + 76); }
+  else ctx.fillText("換你，名字拿去給先生看看", rr, qy + 60);
+  ctx.textAlign = "left";
   return cv;
 }
