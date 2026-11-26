@@ -2,3 +2,5 @@ node_modules/
 __pycache__/
 shots/
 *.pyc
+.dev.vars
+.wrangler/

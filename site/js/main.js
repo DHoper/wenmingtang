@@ -60,6 +60,9 @@ function layout() {
   }
   const tf = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${s.toFixed(4)})`;
   if (canvas.style.transform !== tf) canvas.style.transform = tf;
+  // 畫面看得到的畫布左右邊界（畫布座標）：瘦長手機會裁掉畫布兩側，紅紙、毛筆據此往內收
+  canvas.style.setProperty("--vl", Math.max(0, -x / s).toFixed(1) + "px");
+  canvas.style.setProperty("--vr", Math.min(cw, (W - x) / s).toFixed(1) + "px");
   app.classList.toggle("tall", !land && (sheet.getBoundingClientRect().top - app.querySelector(".top").offsetHeight < 330 || sheet.getBoundingClientRect().top < innerHeight * 0.48));
 }
 let raf = 0;
@@ -171,8 +174,8 @@ function askGender() {
   setPhase("qiankun"); pose("speak");
   speak(S.mode === "name" ? `<span class="q">男孩還是女孩？</span>還不知道就先選一個。` : `<span class="q">男命還女命？</span>男女算法不一樣。`);
   act.innerHTML = `<div class="tokens" role="group" aria-label="乾坤">
-      <button type="button" class="tk" data-g="m" aria-pressed="${S.gender === "m"}"><span class="face">乾造</span><span class="s">男命</span></button>
-      <button type="button" class="tk" data-g="f" aria-pressed="${S.gender === "f"}"><span class="face">坤造</span><span class="s">女命</span></button>
+      <button type="button" class="tk" data-g="m" aria-pressed="${S.gender === "m"}"><span class="face"><span class="vt">乾造</span></span><span class="s">男命</span></button>
+      <button type="button" class="tk" data-g="f" aria-pressed="${S.gender === "f"}"><span class="face"><span class="vt">坤造</span></span><span class="s">女命</span></button>
     </div><div class="row"><button type="button" class="btn ghost" id="backName">改名字</button></div>`;
   act.querySelectorAll("[data-g]").forEach(b => b.onclick = async () => {
     if (act.dataset.busy) return; act.dataset.busy = 1;
@@ -279,7 +282,7 @@ function openBirthCard() {
 function askTopic() {
   setPhase("topic"); pose("speak");
   speak(`<span class="q">要問哪方面？</span>都不選，我就整體看。`);
-  act.innerHTML = `<div class="signs" role="group" aria-label="招牌">${TOPICS.map(([k, t]) => `<button type="button" class="sign" data-t="${k}" aria-pressed="${S.topic === k}"><span class="t">${t}</span></button>`).join("")}</div>
+  act.innerHTML = `<div class="signs" role="group" aria-label="招牌">${TOPICS.map(([k, t]) => `<button type="button" class="sign" data-t="${k}" aria-pressed="${S.topic === k}"><span class="t vt">${t}</span></button>`).join("")}</div>
     <button type="button" class="btn main wide" id="goCount">請先生算</button>`;
   act.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { S.topic = b.dataset.t; act.querySelectorAll(".sign").forEach(x => x.setAttribute("aria-pressed", x === b)); sfx("chime"); pulse(b, "swing", 1200); });
   $("#goCount").onclick = count;
