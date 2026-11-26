@@ -48,19 +48,23 @@ export function siteURL() {
   return CONFIG.SITE_URL || (location.origin + location.pathname);
 }
 /** 分享連結：朋友打開會看到這張批命的摘要與「我也要看」 */
+export const GRADES = ["上上", "上", "中", "中下", "下"];
 export function shareLink(R) {
   const q = new URLSearchParams({ n: R.name, g: R.gender, s: String(R.surname.length), gr: R.grade, sc: String(R.score) });
   if (R.topic && R.topic !== "all") q.set("t", R.topic);
   if (R.bazi) q.set("b", "1");
-  return siteURL() + "?" + q.toString();
+  // r/1.html～r/5.html 各有自己的預覽圖（上上～下）；名字放在 # 後面
+  return siteURL().replace(/[^/]*$/, "") + `r/${GRADES.indexOf(R.grade) + 1}.html#` + q.toString();
 }
+/** App 內瀏覽器（LINE、IG、FB）會擋下載 */
+export const inApp = /Line\/|Instagram|FBAN|FBAV/i.test(navigator.userAgent);
 export function shareText(R) {
-  return `我請問名堂的先生看了名字「${R.name}」，批了個「${R.grade}」：${R.headline}。你的名字呢？`;
+  return `我的名字給廟口先生批到【${R.grade}】${R.score}分：「${R.headline}」。換你，名字拿去給先生看看。`;
 }
 
 /** 畫批命紅紙分享圖，回傳 canvas（1080×1350） */
-export async function drawCard(R) {
-  const W = 1080, H = 1350;
+export async function drawCard(R, story = false) {
+  const W = 1080, H = story ? 1920 : 1350, oy = (H - 1350) / 2;
   const [bg, plaque, frame, red, paper, slip, seal] = await Promise.all([
     "assets/scene/bg.webp", "assets/ui/plaque.webp", "assets/ui/red-frame.webp", "assets/ui/redpaper-light.webp",
     "assets/ui/paper.webp", "assets/ui/slip-frame.webp", "assets/props/seal.webp",
@@ -83,6 +87,7 @@ export async function drawCard(R) {
   const gr = ctx.createLinearGradient(0, 0, 0, H);
   gr.addColorStop(0, "rgba(8,10,18,.35)"); gr.addColorStop(.3, "rgba(8,10,18,.55)"); gr.addColorStop(1, "rgba(8,10,18,.88)");
   ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+  ctx.translate(0, oy);
 
   // 匾額
   const pw = 420, ph = pw * plaque.naturalHeight / plaque.naturalWidth, px = (W - pw) / 2, py = 44;

@@ -408,3 +408,23 @@ button.g { cursor: pointer; font: inherit; }
 .share-note { margin: 0; text-align: center; font: 400 13px/1.6 var(--sans); color: var(--ink-2); }
 .hero.friend .score:first-child { font-size: 18px; letter-spacing: .12em; }
 .share-top { min-height: 50px; font-size: 18px !important; letter-spacing: .08em !important; }
+.share-grid.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.share-grid.g4 .btn { font-size: 15px; border-width: 10px 8px; border-image-width: 10px 8px; }
+.share-grid.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.share-grid[hidden] { display: none; }
+.share-note b { color: var(--vermilion); }
+
+/* 入座：看名字是主選項，幫小孩取名是小木牌 */
+.seat-main { width: 100%; min-height: 118px; }
+.seat-main .t { font-size: clamp(28px, 8vw, 34px); letter-spacing: .24em; padding-left: .24em; }
+.seat-main .s { font-size: 15px; line-height: 1.6; }
+.seat-sub { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.seat-sub .opt { min-height: 40px; font-size: 15px; color: var(--cream); }
+.app[data-orient=land] .seat-main { min-height: 200px; }
+.app[data-orient=land] .seat-main .t { font-size: 40px; }
+/* 老師傅的話：只在標點處換行，不把詞拆開 */
+.say, .say-in { word-break: keep-all; overflow-wrap: anywhere; }
+.prop .t { max-width: 100%; }
+/* 招牌依欄寬縮放，五塊一定排得下 */
+.signs { gap: 8px; }
+.signs .sign, .app[data-orient=land] .signs .sign { width: min(66px, calc((100% - 32px) / 5)); }

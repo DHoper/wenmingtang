@@ -10,7 +10,7 @@ import { slot, preload } from "./assets.js";
 import { aiAvailable, aiReading } from "./ai.js";
 import { sfx, soundOn, setSound } from "./sfx.js";
 import { particles, crossfade, typeHTML, riseOnChange, pulse, reduced } from "./fx.js";
-import { drawCard, cardBlob, shareLink, shareText } from "./share.js";
+import { drawCard, cardBlob, shareLink, shareText, inApp } from "./share.js";
 {
 const $ = s => document.querySelector(s);
 const app = $("#app"), say = $("#say"), act = $("#act"), sheet = $("#sheet"), paper = $("#paper"), paperText = $("#paperText"), canvas = $("#canvas"), viewport = $("#viewport");
@@ -30,7 +30,7 @@ let L = null;
 $("#slotBrush").innerHTML = slot("props/brush");
 $("#slotToken").innerHTML = slot("props/token");
 $("#slotTable").innerHTML = slot("props/table");
-preload(["master/speak", "master/count", "master/approve", "master/frown"]);
+preload(["master/speak", "master/count", "master/approve", "master/stern"]);
 function pose(p) {
   const holder = $("#slotMaster .slot"), src = `assets/master/${p === "write" ? "count" : p}.webp`;
   if (holder) crossfade(holder, src);
@@ -109,12 +109,10 @@ function renderPaper(opts = {}) {
 function seat() {
   setPhase("seat"); pose("idle");
   S.chars = []; S.surnameLen = null; S.R = null; renderPaper(); $("#slotToken").classList.remove("on");
-  speak(store.get("visited", false) ? `又來啦，坐。<span class="q">今天看誰的名字？</span>` : `來，坐。<span class="q">要看名字，還是幫小孩取名？</span>`);
+  speak(store.get("visited", false) ? `又來啦，坐。<span class="q">今天看誰的名字？</span>` : `來，坐。<span class="q">名字寫給我看。</span>`);
   store.set("visited", true);
-  act.innerHTML = `<div class="props">
-      <button type="button" class="prop f-wood" data-m="read"><span class="in"><span class="t">看名字</span><span class="s">現在的名字</span></span></button>
-      <button type="button" class="prop red" data-m="name"><span class="in"><span class="t">幫小孩取名</span><span class="s">給姓和生日</span></span></button>
-    </div>`;
+  act.innerHTML = `<button type="button" class="prop red seat-main" data-m="read"><span class="in"><span class="t">看名字</span><span class="s">筆畫、五格、三才一起看<br>給生日，再配八字</span></span></button>
+    <div class="seat-sub"><button type="button" class="opt" data-m="name">幫小孩取名</button></div>`;
   act.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { S.mode = b.dataset.m; askName(); });
   refreshHistory();
 }
@@ -349,7 +347,7 @@ function baziBlock(b) {
 // ───────── 批命 ─────────
 function showReading(R, opts = {}) {
   setPhase("reading");
-  pose(R.renameAdvised ? "frown" : "approve");
+  pose(R.renameAdvised ? "stern" : "approve");
   renderPaper({ split: { surname: [...R.surname], given: [...R.given] } });
   paperText.querySelectorAll(".c").forEach((el, i) => { el.classList.add("shown"); el.querySelector(".n").textContent = R.chars[i].strokes; });
   $("#seal").classList.add("on");
@@ -510,16 +508,18 @@ async function openShare(R) {
       <p class="share-h" id="shH">這張紅紙，拿去給朋友看</p>
       <div class="share-pic" id="shPic"><span>紅紙寫好中……</span></div>
       <button type="button" class="btn main wide" id="shNative" hidden>分享這張紅紙</button>
-      <div class="share-grid">
-        <a class="btn ghost" id="shLine" href="https://social-plugins.line.me/lineit/share?url=${enc(link)}" target="_blank" rel="noopener">LINE</a>
-        <a class="btn ghost" id="shFb" href="https://www.facebook.com/sharer/sharer.php?u=${enc(link)}" target="_blank" rel="noopener">臉書</a>
-        <a class="btn ghost" id="shTh" href="https://www.threads.net/intent/post?text=${enc(text + "\n" + link)}" target="_blank" rel="noopener">Threads</a>
-        <button type="button" class="btn ghost" id="shSave">存圖片</button>
+      <div class="share-grid g4">
+        <a class="btn ghost" href="https://social-plugins.line.me/lineit/share?url=${enc(link)}&text=${enc(text)}" target="_blank" rel="noopener">LINE</a>
+        <a class="btn ghost" href="https://www.facebook.com/sharer/sharer.php?u=${enc(link)}" target="_blank" rel="noopener">臉書</a>
+        <a class="btn ghost" href="https://www.threads.com/intent/post?text=${enc(text)}&url=${enc(link)}" target="_blank" rel="noopener">Threads</a>
         <button type="button" class="btn ghost" id="shLink">複製連結</button>
-        <button type="button" class="btn ghost" id="shText">抄全文</button>
       </div>
-      <p class="share-note">圖片跟連結都不會帶你的生日。存下圖片，就能貼到 IG 限動。</p>
-      <button type="button" class="btn ghost wide" id="shClose">收起來</button>
+      <div class="share-grid g2" ${inApp ? "hidden" : ""}>
+        <button type="button" class="btn ghost" id="shSave">存圖片</button>
+        <button type="button" class="btn ghost" id="shStory">存限動圖</button>
+      </div>
+      <p class="share-note">${inApp ? "這裡不能直接下載，<b>長按上面的圖</b>就能存起來，再貼到 IG 限動。" : "圖片跟連結都不會帶你的生日。要發 IG 限動，先存「限動圖」再到 IG 發。"}</p>
+      <div class="row"><button type="button" class="btn ghost" id="shText">抄全文</button><button type="button" class="btn ghost" id="shClose">收起來</button></div>
     </div>`;
   document.body.append(box);
   requestAnimationFrame(() => box.classList.add("on"));
@@ -538,10 +538,10 @@ async function openShare(R) {
     url = URL.createObjectURL(blob);
     box.querySelector("#shPic").innerHTML = `<img src="${url}" alt="${esc(R.name)}的批命紅紙：${R.grade}，${esc(R.headline)}">`;
   } catch (_) { box.querySelector("#shPic").innerHTML = `<span>紅紙沒寫成，用下面的連結分享也一樣。</span>`; }
-  box.querySelector("#shSave").onclick = () => {
-    if (!url) return;
-    const a = document.createElement("a"); a.href = url; a.download = fname; document.body.append(a); a.click(); a.remove();
-    toast("圖片存好了");
+  const save = (u, name) => { const a = document.createElement("a"); a.href = u; a.download = name; document.body.append(a); a.click(); a.remove(); toast("圖片存好了"); };
+  box.querySelector("#shSave").onclick = () => { if (url) save(url, fname); };
+  box.querySelector("#shStory").onclick = async () => {
+    try { save(URL.createObjectURL(await cardBlob(await drawCard(R, true))), `問名堂_${R.name}_限動.png`); } catch (_) { toast("限動圖沒畫成，再按一次"); }
   };
   const nb = box.querySelector("#shNative");
   const data = file && navigator.canShare && navigator.canShare({ files: [file] }) ? { files: [file], text: text + "\n" + link } : { title: "問名堂", text, url: link };
@@ -553,7 +553,7 @@ async function openShare(R) {
 
 // 朋友傳來的連結：?n=名字&g=m|f&s=姓氏字數&gr=評等&sc=分數&t=所問&b=1（原批有配八字）
 function incoming() {
-  const q = new URLSearchParams(location.search);
+  const q = new URLSearchParams(location.hash.length > 1 ? location.hash.slice(1) : location.search);
   const n = [...(q.get("n") || "")].filter(c => /\p{Script=Han}/u.test(c));
   if (n.length < 2 || n.length > 5) return null;
   const g = q.get("g") === "f" ? "f" : "m";
@@ -573,11 +573,8 @@ function showFriend(x) {
       ${x.gr ? `<div class="grade">${x.gr}</div>` : ""}${x.sc ? `<div class="score">${han(x.sc)}分</div>` : ""}
       <div class="hlp">朋友給先生看過的名字。你的名字，會批出什麼？</div>
     </div>
-    <div class="props">
-      <button type="button" class="prop red" data-m="read"><span class="in"><span class="t">換我看名字</span><span class="s">寫下你的名字</span></span></button>
-      <button type="button" class="prop f-wood" data-m="name"><span class="in"><span class="t">幫小孩取名</span><span class="s">給姓和生日</span></span></button>
-    </div>
-    <div class="row"><button type="button" class="btn ghost" id="seeFriend">看${esc(x.name)}的筆畫</button></div>`;
+    <button type="button" class="prop red seat-main" data-m="read"><span class="in"><span class="t">換我看名字</span><span class="s">寫下你的名字，先生算給你看</span></span></button>
+    <div class="seat-sub"><button type="button" class="opt" id="seeFriend">看${esc(x.name)}的筆畫</button><button type="button" class="opt" data-m="name">幫小孩取名</button></div>`;
   act.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { S.mode = b.dataset.m; S.chars = []; S.surnameLen = null; askName(); });
   $("#seeFriend").onclick = async () => {
     await ready;

@@ -8,7 +8,7 @@ export const ASSETS = {
   "master/count":   { label: "老師傅・低頭數筆畫", ar: 560 / 572, src: "assets/master/count.webp" },
   "master/write":   { label: "老師傅・低頭擬名", ar: 560 / 572, src: "assets/master/count.webp" },
   "master/approve": { label: "老師傅・點頭", ar: 560 / 572, src: "assets/master/approve.webp" },
-  "master/frown":   { label: "老師傅・皺眉", ar: 560 / 572, src: "assets/master/frown.webp" },
+  "master/stern":   { label: "老師傅・正色", ar: 560 / 572, src: "assets/master/stern.webp" },
   "props/table":    { label: "紅布木桌", ar: 1100 / 540, src: "assets/props/table.webp" },
   "props/brush":    { label: "毛筆與硯台", ar: 360 / 246, src: "assets/props/brush.webp" },
   "props/token":    { label: "黃楊木牌", ar: 501 / 1179, src: "assets/props/token.webp" },
