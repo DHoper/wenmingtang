@@ -195,3 +195,6 @@
 .after.has-ai { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .after.has-ai #askAI { grid-column: 1 / -1; }
 .hist-row { background: var(--paper) 0 0 / 260px; }
+/* 寬螢幕左邊已有整個舞台，頂端頭像與台詞不重複 */
+.app[data-orient=land] .medal, .app[data-orient=land] .rsay { display: none; }
+.app[data-orient=land] .rtop { grid-template-columns: minmax(0, 1fr) auto; }
