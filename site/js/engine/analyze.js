@@ -7,9 +7,9 @@ import { ORGAN } from "./bazi.js";
 
 export const GRID_INFO = {
   tian: { label: "天格", alias: "祖運", role: "祖上與長輩的庇蔭，由姓氏決定", scored: false },
-  ren: { label: "人格", alias: "主運", role: "整個名字的核心，主性格、才能與一生的主調", scored: true },
+  ren: { label: "人格", alias: "主運", role: "整個名字的主幹，主性格、才能與一生的主調", scored: true },
   di: { label: "地格", alias: "前運", role: "前半生的基礎，也看配偶、子女與部屬", scored: true },
-  wai: { label: "外格", alias: "副運", role: "人際、貴人與外在環境", scored: true },
+  wai: { label: "外格", alias: "副運", role: "朋友、貴人與出外的運", scored: true },
   zong: { label: "總格", alias: "後運", role: "中晚年的走向與一生的總成果", scored: true },
 };
 export const GRID_KEYS = ["tian", "ren", "di", "wai", "zong"];
@@ -65,7 +65,7 @@ export function baziMatch(bazi, wuge, givenInfos) {
 }
 
 /**
- * 核心計算（不含文字），改名引擎也用這個。
+ * 主要計算（不含文字），改名引擎也用這個。
  * p: { surname:[ch], given:[ch], gender:'m'|'f', bazi? }
  */
 export function evaluate(p) {

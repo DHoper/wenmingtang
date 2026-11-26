@@ -36,7 +36,7 @@ export function tenGod(dmGan, gan) {
   return { 比劫: same ? "比肩" : "劫財", 印: same ? "偏印" : "正印", 食傷: same ? "食神" : "傷官", 財: same ? "偏財" : "正財", 官殺: same ? "七殺" : "正官" }[rel];
 }
 
-/** 指定時區下，當地時間對應的 UTC 偏移（小時） */
+/** 指定時區下，當地時間對應的UTC偏移（小時） */
 export function tzOffset(y, mo, d, h, mi, tz) {
   let guess = Date.UTC(y, mo - 1, d, h, mi) - 8 * 3600e3;
   for (let i = 0; i < 3; i++) {
@@ -51,7 +51,7 @@ export function tzOffset(y, mo, d, h, mi, tz) {
   return (Date.UTC(g("year"), g("month") - 1, g("day"), g("hour"), g("minute")) - guess) / 3600e3;
 }
 
-/** 均時差（分鐘），Spencer 近似 */
+/** 均時差（分鐘），Spencer近似 */
 export function equationOfTime(y, mo, d) {
   const n = Math.round((Date.UTC(y, mo - 1, d) - Date.UTC(y, 0, 0)) / 864e5);
   const B = 2 * Math.PI * (n - 1) / 365;
@@ -70,7 +70,7 @@ export function trueSolar({ y, m, d, h, mi }, place) {
 
 /**
  * input: { calendar: 'solar'|'lunar', y, m, d, leap, h, mi (null = 不知時辰), place, ziRule: 'early'|'split' }
- * L: lunar-javascript 匯出物件（{Solar, Lunar}）
+ * L: lunar-javascript匯出物件（{Solar, Lunar}）
  */
 export function computeBazi(input, L) {
   let { y, m, d } = input;
@@ -130,12 +130,12 @@ export function computeBazi(input, L) {
   if (support >= 0.8 && deLing && byGod.官殺 < 0.08) {
     strength = "極旺"; pattern = "專旺";
     yong = el("比劫"); xi = [el("印"), el("食傷")]; ji = [el("官殺"), el("財")];
-    reasons.push("你的氣幾乎佔滿整盤，又沒什麼來剋，這叫專旺。順著它走，比劫、印都好，官殺、財反而不好。");
+    reasons.push("你的氣幾乎佔滿整盤，又沒什麼來剋，是專旺的命。順著它走，比劫、印都好，官殺、財反而不好。");
   } else if (support <= 0.15 && !deLing && !deDi) {
     strength = "極弱"; pattern = "從格";
     const top = opp[0];
     yong = el(top); xi = [el(top === "官殺" ? "財" : top === "財" ? "食傷" : "財")]; ji = [el("印"), el("比劫")];
-    reasons.push(`你本身極弱又沒根，這叫從格，乾脆跟著最旺的${top}走，印、比劫再來幫你，反而壞事。`);
+    reasons.push(`你本身極弱又沒根，是從格的命，乾脆跟著最旺的${top}走。印、比劫再來幫你，反而壞事。`);
   } else if (support >= 0.5) {
     strength = support >= 0.62 ? "身強" : "偏強";
     if (byGod.印 > byGod.比劫) { yong = el("財"); xi = [el("食傷"), el("官殺")]; reasons.push("身強，印又重，我取財來破印；食傷能生財，也好。"); }
@@ -165,7 +165,7 @@ export function computeBazi(input, L) {
   const missing = ELEMENTS.split("").filter(e => power[e] === 0);
   if (missing.length) {
     const lack = missing.map(e => `沒有${e}${[yong, ...xi].includes(e) ? "，這剛好是你要的" : ji.includes(e) ? "，這是忌神，不用補" : ""}`).join("；");
-    reasons.push(`你八字${lack}。缺什麼不一定要補什麼，取名看喜用，不是看缺。`);
+    reasons.push(`你八字${lack}。缺什麼不一定要補什麼，取名看喜用，不看缺。`);
   }
 
   return {

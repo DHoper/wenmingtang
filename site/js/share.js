@@ -15,7 +15,7 @@ function img(src) {
   return imgCache.get(src);
 }
 
-/** 九宮格：像 CSS border-image（含 fill），slice 是原圖切線，b 是畫出來的邊寬 */
+/** 九宮格：像CSS的border-image，含fill；slice是原圖切線，b是畫出來的邊寬 */
 function nine(ctx, im, slice, x, y, w, h, b, hollow = false) {
   const W = im.naturalWidth, H = im.naturalHeight, s = slice;
   const sx = [0, s, W - s, W], sy = [0, s, H - s, H];
@@ -37,7 +37,7 @@ function wrap(ctx, text, maxW) {
   for (const ch of text) {
     if (ctx.measureText(line + ch).width > maxW && line) {
       // 標點不放行首
-      if ("，。、；：！？」』）".includes(ch)) { line += ch; continue; }
+      if ("，。、；：\uFF01？」』）".includes(ch)) { line += ch; continue; }
       lines.push(line); line = ch;
     } else line += ch;
   }
@@ -57,16 +57,16 @@ export function shareLink(R) {
   // r/1.html～r/5.html 各有自己的預覽圖（上上～下）；名字放在 # 後面
   return siteURL().replace(/[^/]*$/, "") + `r/${GRADES.indexOf(R.grade) + 1}.html#` + q.toString();
 }
-/** App 內瀏覽器（LINE、IG、FB）會擋下載 */
+/** App內瀏覽器（LINE、IG、FB）會擋下載 */
 export const inApp = /Line\/|Instagram|FBAN|FBAV/i.test(navigator.userAgent);
-/** 被別的網頁框住（例如 Claude 預覽）時，下載與系統分享都會被擋 */
+/** 被別的網頁框住（例如Claude預覽）時，下載與系統分享都會被擋 */
 export const framed = (() => { try { return top !== self; } catch (_) { return true; } })();
 export const noDownload = inApp || framed;
 export function shareText(R) {
   return `我的名字給廟口先生批了「${R.grade}」：「${R.headline}」。換你，名字拿去給先生看看。`;
 }
 
-/** 畫批命紅紙分享圖，回傳 canvas（1080×1350） */
+/** 畫批命紅紙分享圖，回傳canvas（1080×1350） */
 export async function drawCard(R, story = false) {
   const W = 1080, H = story ? 1920 : 1350, oy = (H - 1350) / 2;
   const [bg, plaque, frame, red, paper, slip, seal] = await Promise.all([
@@ -202,7 +202,7 @@ async function drawQR(ctx, text, x, y, size, color) {
 const CN = "〇一二三四五六七八九";
 const cnum = n => n < 10 ? CN[n] : n < 20 ? "十" + (n % 10 ? CN[n % 10] : "") : CN[Math.floor(n / 10)] + "十" + (n % 10 ? CN[n % 10] : "");
 
-/** 明信片（1500×1000 橫式）：左邊廟埕與老先生；右邊名字、評等朱印、批語、三句重點、總結、五格與 QR code */
+/** 明信片（1500×1000橫式）：左邊廟埕與老先生；右邊名字、評等朱印、批語、三句重點、總結、五格與QR code */
 export async function drawPostcard(R) {
   const W = 1500, H = 1000;
   const pose = R.renameAdvised ? "stern" : "approve";
@@ -290,7 +290,7 @@ export async function drawPostcard(R) {
   return cv;
 }
 
-/** 長圖（1080 寬，高度看內容）：一張從頭寫到尾的批命帖。不放八字那段，免得透露生辰。 */
+/** 長圖（1080寬，高度看內容）：一張從頭寫到尾的批命帖。不放八字那段，免得透露生辰。 */
 export async function drawLongCard(R) {
   const W = 1080, M = 76, IW = W - M * 2;
   const pose = R.renameAdvised ? "stern" : "approve";
@@ -419,7 +419,7 @@ export async function drawLongCard(R) {
   return cv;
 }
 
-/** 連結預覽卡（1200×630，LINE、臉書、Threads 的標準比例）：朋友收到連結時看到的就是這張 */
+/** 連結預覽卡（1200×630，LINE、臉書、Threads的標準比例）：朋友收到連結時看到的就是這張 */
 export async function drawOgCard(R) {
   const W = 1200, H = 630;
   const pose = R.renameAdvised ? "stern" : "approve";
@@ -496,7 +496,7 @@ export async function drawOgCard(R) {
   return cv;
 }
 
-/** 把預覽卡存到 Worker，換一個帶著這張圖的專屬連結；失敗就回 null（改用一般連結）。同一張只傳一次。 */
+/** 把預覽卡存到Worker，換一個帶著這張圖的專屬連結；失敗就回null，改用一般連結。同一張只傳一次。 */
 const cardLinks = new Map();
 export function uploadCard(R, cv) {
   const key = [R.name, R.surname.length, R.gender, R.topic, R.grade, R.bazi ? 1 : 0, (R.aiParts && R.aiParts.headline) || ""].join("|");

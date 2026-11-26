@@ -19,7 +19,7 @@ const $ = s => document.querySelector(s);
 const app = $("#app"), say = $("#say"), act = $("#act"), sheet = $("#sheet"), paper = $("#paper"), paperText = $("#paperText"), canvas = $("#canvas"), viewport = $("#viewport");
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 // 斷句：一個子句不拆開（批語、標題用）；白話裡的「象名」不拆開
-const clauses = t => esc(t).split(/(?<=[，；。、！？　])/).filter(Boolean).map(c => `<span class="cl">${c}</span>`).join("");
+const clauses = t => esc(t).split(/(?<=[，；。、\uFF01？　])/).filter(Boolean).map(c => `<span class="cl">${c}</span>`).join("");
 const prose = t => esc(t).replace(/「[^」]{1,8}」/g, m => `<span class="nw">${m}</span>`);
 const gtxt = g => g === "f" ? "坤造" : "乾造";
 // 一百以上的中文數字（民國年用）
@@ -445,7 +445,7 @@ function gridTiles(R, pending, asButtons = false) {
   return GRID_KEYS.map(k => {
     const g = R.wuge[k], cls = g.lv >= 1 ? "good" : g.lv <= -1 ? "bad" : "";
     const tag = asButtons ? "button" : "div";
-    return `<${tag} ${asButtons ? 'type="button"' : ""} class="g${pending ? " pending" : ""}" data-k="${k}" aria-label="${GRID_INFO[k].label} ${g.n} 畫，${g.el}，${g.level}"><span class="k">${GRID_INFO[k].label}</span><span class="num">${g.n}</span><span class="el e-${g.el}">${g.el}</span><span class="lv ${cls}">${LV_SHORT[g.level] || g.level}</span></${tag}>`;
+    return `<${tag} ${asButtons ? 'type="button"' : ""} class="g${pending ? " pending" : ""}" data-k="${k}" aria-label="${GRID_INFO[k].label}${han(g.n)}畫，${g.el}，${g.level}"><span class="k">${GRID_INFO[k].label}</span><span class="num">${g.n}</span><span class="el e-${g.el}">${g.el}</span><span class="lv ${cls}">${LV_SHORT[g.level] || g.level}</span></${tag}>`;
   }).join("");
 }
 const cheng = v => { const t = Math.round(v * 10); return v < 0.05 ? "幾乎沒有" : t < 1 ? "不到一成" : `約${t === 2 ? "兩" : han(t)}成`; };
@@ -567,7 +567,7 @@ function setupAsk(R) {
     meta.textContent = over ? `多了${num(n - LIMITS.QUESTION_MAX)}個字，講重點就好` : `${num(n)}／${num(LIMITS.QUESTION_MAX)}`;
     const lb = $("#askLeft");
     lb.innerHTML = `<span>${left ? "還能問" + (left === 2 ? "兩" : num(left)) + "次" : "這張問完了"}</span>` + Array.from({ length: LIMITS.FOLLOWUPS }, (_, i) => `<i class="${i < left ? "" : "used"}"></i>`).join("");
-    lb.setAttribute("aria-label", `這張還能問 ${left} 次`);
+    lb.setAttribute("aria-label", `這張還能問${num(left)}次`);
     go.disabled = over || n === 0 || !left;
     q.placeholder = left ? "例如：適合做生意嗎？" : "這張問完了，想再問就換一個名字請先生看。";
     q.readOnly = !left;
@@ -589,7 +589,7 @@ function setupAsk(R) {
       q.value = "";
     } catch (e) {
       if (e.code === "user_limit" || e.code === "site_limit") { item.remove(); limitModal(e.code); }
-      else if (e.code === "too_long") { item.remove(); toast(`最多 ${LIMITS.QUESTION_MAX} 個字，講重點就好`); }
+      else if (e.code === "too_long") { item.remove(); toast(`最多${num(LIMITS.QUESTION_MAX)}個字，講重點就好`); }
       else if (e.code === "too_fast") out.textContent = "慢慢來，一次問一件。等一下再問。";
       else out.textContent = "香斷了，這回講不下去。你等一下再叫我。";
     }
@@ -638,7 +638,7 @@ async function showRename(R) {
     <div class="cond f-slip"><p class="cond-sum" id="condSum"></p><button type="button" class="opt small" id="condBtn" aria-expanded="false">換個挑法</button></div>
     <div class="cond-body f-slip" id="condBody" hidden>
       <p class="cond-row">名字取<span class="opts"><button type="button" class="opt" data-len="2">兩個字</button><button type="button" class="opt" data-len="1">一個字</button></span></p>
-      <p class="cond-row">要留的字<input id="rKeepCh" placeholder="沒有" aria-label="要留的字（一個字）"><span class="kp-grp">放在<span class="opts"><button type="button" class="opt" data-kp="0">頭一個</button><button type="button" class="opt" data-kp="1">後一個</button></span></span></p>
+      <p class="cond-row">要留的字<input id="rKeepCh" placeholder="沒有" aria-label="要留的字，寫一個字"><span class="kp-grp">放在<span class="opts"><button type="button" class="opt" data-kp="0">頭一個</button><button type="button" class="opt" data-kp="1">後一個</button></span></span></p>
       <p class="cond-row">不要用的字<input id="rEx" class="long" placeholder="例如：美、玲" aria-label="不要用的字"></p>
       <p class="cond-row"><span class="opts"><button type="button" class="opt" id="rFree">男女的字都可以用</button></span></p>
       <button type="button" class="btn main wide" id="rGo">照這樣再挑</button>
@@ -733,7 +733,7 @@ async function copy(txt, ok) {
   catch (_) { toast("這裡不給抄，長按文字複製"); }
 }
 function fullText(R) {
-  return [`問名堂批命：${R.name}（${gtxt(R.gender)}）`, `先生批：${R.grade}　${R.headline}`, (R.aiParts && R.aiParts.headline) || R.headlinePlain,
+  return [`問名堂批命：${R.name}・${gtxt(R.gender)}`, `先生批：${R.grade}　${R.headline}`, (R.aiParts && R.aiParts.headline) || R.headlinePlain,
     ...R.sections.filter(s => s.key !== "bazi" && s.key !== "zodiac").map(s => `【${s.title}】\n批：${s.pi.join("")}\n白話：${(R.aiParts && R.aiParts[s.key]) || s.bai}`), "", "也去給先生看看你的名字：" + shareLink(R)].join("\n");
 }
 const ICON = {
@@ -759,8 +759,8 @@ async function openShare(R) {
         <a class="sicon" id="toTh" target="_blank" rel="noopener">${ICON.th}<span>Threads</span></a>
         <button type="button" class="sicon" id="shLink"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.6 13.4a1 1 0 0 1 0-1.4l3.5-3.5a1 1 0 1 1 1.4 1.4L12 13.4a1 1 0 0 1-1.4 0Zm-2.8 5.3a4 4 0 0 1-2.8-6.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a2 2 0 0 0 2.8 2.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a4 4 0 0 1-2.8 1.2Zm8.5-5.7a1 1 0 0 1-.7-1.7l2.1-2.1a2 2 0 0 0-2.8-2.8l-2.1 2.1a1 1 0 1 1-1.4-1.4l2.1-2.1a4 4 0 0 1 5.6 5.6l-2.1 2.1a1 1 0 0 1-.7.3Z"/></svg><span>複製連結</span></button>
       </div>
-      <p class="share-note">朋友在 LINE、臉書看到的就是上面這張卡，點進來就能看自己的名字。不帶你的生日；批命卡在問名堂留 30 天。</p>
-      <div class="share-more"><button type="button" class="opt small" id="shLong">${noDownload ? "看整張長圖" : "存整張長圖"}</button>${noDownload ? "" : `<button type="button" class="opt small" id="shStory">存 IG 限動圖</button>`}<button type="button" class="opt small" id="shText">抄整張批命</button></div>
+      <p class="share-note">朋友在LINE、臉書看到的，就是上面這張卡，點進來就能寫自己的名字。你的生日不會傳出去。批命卡在問名堂放三十天。</p>
+      <div class="share-more"><button type="button" class="opt small" id="shLong">${noDownload ? "看整張長圖" : "存整張長圖"}</button>${noDownload ? "" : `<button type="button" class="opt small" id="shStory">存IG限動圖</button>`}<button type="button" class="opt small" id="shText">抄整張批命</button></div>
     </div>`;
   document.body.append(box);
   requestAnimationFrame(() => box.classList.add("on"));
@@ -778,7 +778,7 @@ async function openShare(R) {
   setLinks();
   // 批命卡還沒存好之前，按 LINE、臉書先擋一下，免得傳出去的是沒有圖的連結
   box.querySelectorAll(".share-icons a").forEach(a => a.addEventListener("click", e => { if (!ready) { e.preventDefault(); toast("紅紙還沒乾，等一下"); } }));
-  box.querySelector("#shLink").onclick = () => ready ? copy(msg(), "連結抄好了，貼到 LINE 會帶著批命卡") : toast("紅紙還沒乾，等一下");
+  box.querySelector("#shLink").onclick = () => ready ? copy(msg(), "連結抄好了，貼到LINE會帶著批命卡") : toast("紅紙還沒乾，等一下");
   box.querySelector("#shText").onclick = () => copy(fullText(R), "整張批命抄好了");
   const main = box.querySelector("#shMain");
   const canShareNative = navigator.share && !framed;
@@ -791,7 +791,7 @@ async function openShare(R) {
   // 1. 先生還在寫就等一下；畫預覽卡、存到 Worker，換成帶圖的連結
   const pend = readingPending(R);
   if (pend) {
-    box.querySelector("#shPic").innerHTML = `<span>先生還在寫，寫完就幫你貼紅紙……</span>`;
+    box.querySelector("#shPic").innerHTML = `<span>先生還在寫，寫好就貼上紅紙……</span>`;
     await Promise.race([pend.catch(() => {}), sleep(30000)]);
     if (!box.isConnected) return;
   }
@@ -808,7 +808,7 @@ async function openShare(R) {
   ready = true; setLinks();
   main.disabled = false;
   main.textContent = canShareNative ? "傳給朋友" : "複製連結";
-  main.onclick = canShareNative ? async () => { try { await navigator.share({ title: "問名堂", text, url: link }); } catch (_) {} } : () => copy(msg(), "連結抄好了，貼到 LINE 會帶著批命卡");
+  main.onclick = canShareNative ? async () => { try { await navigator.share({ title: "問名堂", text, url: link }); } catch (_) {} } : () => copy(msg(), "連結抄好了，貼到LINE會帶著批命卡");
   // 2. 整張長圖：另外存、另外傳（IG、相簿）
   let longP = null;
   const getLong = () => longP || (longP = drawLongCard(R).then(cardBlob));

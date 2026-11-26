@@ -5,7 +5,7 @@
 - 原始碼：`C:\Users\dhope\repos\wenmingtang`（本機 git，尚未推上 GitHub）。網站本體在 `site/`。
 - 預覽：https://claude.ai/artifact/Y9MReDmNgs2oMY5J3Rxqvd（Claude artifact，私人）
 - 設計文件：https://claude.ai/artifact/V2vQpJYr4PV2TCeCo7ZDad
-- 文字口吻規範：`docs/voice.md`（業主嫌太 AI，所有文字照這份寫）
+- 文字口吻規範：`docs/voice.md`（業主嫌太 AI，所有文字照這份寫；11-27 加了「古典／白話分工」與上網整理的 AI 腔禁用清單，`python tools/ai_words_check.py` 自動掃描）
 
 ## 〇、11-26 晚上最新狀態（先看這段）
 - **正式網址**：https://dhoper.github.io/wenmingtang/ （repo `DHoper/wenmingtang`，推 main 後 GitHub Actions 自動把 site/ 發布；設定在 `.github/workflows/pages.yml`）。
@@ -16,7 +16,7 @@
   - 次數（`js/ai-prompt.js` 的 LIMITS，Worker 的 wrangler.toml vars 要同步）：每台裝置每天 3 張 AI 批命、追問 9 句（每張 3 句，記在瀏覽器）；同一 IP 上限是裝置的 8 倍（手機網路共用 IP）；全站每天 400 次。**計數記在 D1 的 counters 表**（原子遞增、先扣再呼叫 DeepSeek、失敗退回；11-27 審查後從 KV 改過來，KV 已不用）。用完跳「神力耗盡」（批命／追問／全站／這張問完了四種），每次進站只跳一次。
   - 朋友傳來的那張不自動請 AI，要按「請先生親口批」才扣看的人的次數。AI 寫到一半離開再回來接著用，不重扣。
   - Worker 會用白名單檢查送來的批命依據；分享卡標題、描述格式固定，全站每天 3000 張、每 IP 30 張。
-  - **待辦**：`npx wrangler secret put SALT` 設一個隨機字串（目前用程式裡的預設值，IP 雜湊可被反推；11-27 我要設時被權限擋下，等業主決定）。可再加 Cloudflare Turnstile 擋腳本。
+  - SALT：11-27 業主同意後已用 `wrangler secret put SALT` 設成隨機字串（只在 Cloudflare 機密裡）。可再加 Cloudflare Turnstile 擋腳本。
   - DeepSeek 餘額 11-27 是 US$1.49；一張 AI 批命約 US$0.002，全站 400 次用滿一天約 US$0.8。
   - 看過的 AI 批命存在瀏覽器（`wenming:aiCache`，留 20 張），重看不扣次數。
   - Worker：`worker/src/index.js`，mode = reading | ask，已部署。`node worker/try_reading.mjs` 本機試一整張（會花 DeepSeek）。

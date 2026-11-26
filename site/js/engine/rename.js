@@ -7,6 +7,7 @@ import { SANCAI } from "../data/sancai.js";
 import { evaluate, rootsOf } from "./analyze.js";
 import { zodiacRules } from "../data/zodiac.js";
 import { kangxi, nameLib, toneOf, givenNames, twChars } from "./chars.js";
+import { han } from "./reading.js";
 
 // 常見不雅諧音（拼音不分聲調）
 const BAD_SOUNDS = ["si wang", "shi wang", "wu chi", "bai chi", "fei wu", "sha zi", "sha bi", "ben dan", "lan ren", "du zi", "pi gu", "da bian", "xiao bian", "gui zi", "ji ba", "wu gui", "zao gao", "shi bai", "bing du", "qin shou", "mei qian", "fan tong", "pin qiong", "si shi", "si yi", "wu yu", "you gui", "ku si", "lao ji"];
@@ -127,9 +128,9 @@ export function suggestNames(opts) {
 
 function reasonOf(s, bazi) {
   const w = s.ev.wuge;
-  const bits = [`人格${w.ren.n}畫是${w.ren.level}`, `總格${w.zong.n}畫是${w.zong.level}`];
+  const bits = [`人格${han(w.ren.n)}畫，${w.ren.level}`, `總格${han(w.zong.n)}畫，${w.zong.level}`];
   if (bazi) {
-    if (w.ren.el === bazi.yong) bits.push(`人格屬${w.ren.el}，正好是你要的用神`);
+    if (w.ren.el === bazi.yong) bits.push(`人格屬${w.ren.el}，剛好是你最要的`);
     else if (bazi.xi.includes(w.ren.el)) bits.push(`人格屬${w.ren.el}，是幫得到你的喜神`);
     const helpers = s.chars.filter(c => c.wuxing && (c.wuxing === bazi.yong || bazi.xi.includes(c.wuxing))).map(c => `「${c.ch}」屬${c.wuxing}`);
     if (helpers.length) bits.push(helpers.join("、") + "，補到你要的五行");

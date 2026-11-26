@@ -1,8 +1,8 @@
 """產生分享用的靜態頁與預覽圖。
 用法：python tools/build_share_pages.py https://dhoper.github.io/wenmingtang/
-- site/og/home.jpg、site/og/g1.jpg～g5.jpg：1200×630 預覽圖（用瀏覽器 canvas 以網站素材畫，需本機伺服器 127.0.0.1:8765 在跑）
-- site/r/1.html～5.html：每個評等一頁，OG 寫死；人打開會帶著 # 後面的資料轉回首頁
-- site/index.html：OG 標籤（絕對網址）
+- site/og/home.jpg、site/og/g1.jpg～g5.jpg：1200×630預覽圖，用瀏覽器canvas以網站素材畫，需本機伺服器127.0.0.1:8765在跑
+- site/r/1.html～5.html：每個評等一頁，OG寫死；人打開會帶著#後面的資料轉回首頁
+- site/index.html：OG標籤，絕對網址
 """
 import sys, os, re, base64, html
 from playwright.sync_api import sync_playwright
@@ -14,7 +14,7 @@ SAY = {
     "上上": "名字批到上上，先生點頭說難得。",
     "上": "名字批到上，先生說這名字不錯。",
     "中": "名字批到中，先生說還可以，有幾個所在要注意。",
-    "中下": "名字批到中下，先生老實講了幾句。",
+    "中下": "名字批到中下，先生點了幾個要顧的所在。",
     "下": "名字批到下，先生說這名字要想一想。",
 }
 DESC = "夜裡的廟口，在算命攤前坐下，把名字寫給老先生看。康熙筆畫、五格三才都算，有生日連八字也看，最後批一張紅紙給你。"
