@@ -392,3 +392,19 @@ button.g { cursor: pointer; font: inherit; }
 @media (min-width: 1280px) { .app[data-orient=land] .sheet-in { zoom: 1.1; } }
 @media (min-width: 1680px) { .app[data-orient=land] .sheet-in { zoom: 1.22; } .app[data-orient=land] .say { font-size: 23px; } }
 .sheet-in > * { min-width: 0; }
+
+/* ───────── 分享面板 ───────── */
+.share-btn { color: #fff3d6 !important; border-image: url(../assets/ui/btn-red.webp) 44 72 fill / 10px 6px stretch !important; text-shadow: var(--on-red) !important; }
+.share { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 12px; background: rgba(5, 7, 12, .74); opacity: 0; transition: opacity .25s; }
+.share.on { opacity: 1; }
+.share-in { width: min(440px, 100%); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 6px 10px 10px; display: grid; gap: 10px; color: var(--ink); transform: translateY(16px); transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
+.share.on .share-in { transform: none; }
+.share-h { margin: 0; text-align: center; font: 700 20px/1.4 var(--song); letter-spacing: .06em; color: var(--vermilion); }
+.share-pic { display: grid; place-items: center; min-height: 160px; }
+.share-pic img { display: block; width: auto; max-width: 100%; max-height: min(46dvh, 420px); aspect-ratio: 1080 / 1350; box-shadow: 0 8px 18px rgba(0, 0, 0, .45); }
+.share-pic span { font: 400 16px/1.6 var(--kai); color: var(--ink-2); }
+.share-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.share-grid .btn { display: grid; place-items: center; min-height: 46px; padding: 0 2px; font-size: 16px; letter-spacing: .02em; text-decoration: none; }
+.share-note { margin: 0; text-align: center; font: 400 13px/1.6 var(--sans); color: var(--ink-2); }
+.hero.friend .score:first-child { font-size: 18px; letter-spacing: .12em; }
+.share-top { min-height: 50px; font-size: 18px !important; letter-spacing: .08em !important; }

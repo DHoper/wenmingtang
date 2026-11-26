@@ -51,6 +51,7 @@ export function siteURL() {
 export function shareLink(R) {
   const q = new URLSearchParams({ n: R.name, g: R.gender, s: String(R.surname.length), gr: R.grade, sc: String(R.score) });
   if (R.topic && R.topic !== "all") q.set("t", R.topic);
+  if (R.bazi) q.set("b", "1");
   return siteURL() + "?" + q.toString();
 }
 export function shareText(R) {
@@ -100,9 +101,12 @@ export async function drawCard(R) {
   ctx.font = `900 ${fs}px ${SONG}`; ctx.fillStyle = "#170905";
   const top = ly + lh / 2 - (lineH * n) / 2 - 20;
   nameChars.forEach((c, i) => ctx.fillText(c, lx + lw / 2, top + lineH * (i + .5)));
-  ctx.globalAlpha = .9; ctx.drawImage(seal, lx + lw - 92, ly + lh - 112, 84, 84); ctx.globalAlpha = 1;
-  ctx.font = `900 22px ${SONG}`; ctx.fillStyle = "#c42c1e";
-  ctx.fillText("問", lx + lw - 50, ly + lh - 82); ctx.fillText("名", lx + lw - 50, ly + lh - 56);
+  // 朱印：印框素材＋程式寫字，蓋在紅紙右下
+  ctx.save(); ctx.translate(lx + lw - 58, ly + lh - 78); ctx.rotate(-0.14);
+  ctx.fillStyle = "rgba(255,236,214,.88)"; ctx.fillRect(-40, -40, 80, 80);
+  ctx.drawImage(seal, -48, -48, 96, 96);
+  ctx.font = `900 30px ${SONG}`; ctx.fillStyle = "#b01e14";
+  ctx.fillText("問", 0, -16); ctx.fillText("名", 0, 18); ctx.restore();
 
   // 右：評等紅紙
   const rx = 290, ry = 250, rw = 726, rh = 760;
@@ -115,13 +119,19 @@ export async function drawCard(R) {
   ctx.shadowColor = "transparent"; ctx.shadowOffsetY = 0;
   ctx.font = `700 40px ${SONG}`; ctx.fillStyle = "#ffe6d2";
   drawSpaced(ctx, han(R.score) + "分", rx + rw / 2, ry + 418, 10);
-  // 批語（文言）
-  ctx.font = `400 54px ${KAI}`; ctx.fillStyle = "#fff3dc";
-  const hl = R.headline.split("，");
-  hl.forEach((t, i) => ctx.fillText(t + (i < hl.length - 1 ? "，" : "。"), rx + rw / 2, ry + 510 + i * 72));
-  // 白話一句
-  ctx.font = `400 32px ${KAI}`; ctx.fillStyle = "rgba(255,240,228,.92)";
-  wrap(ctx, R.headlinePlain, rw - 140).slice(0, 3).forEach((t, i) => ctx.fillText(t, rx + rw / 2, ry + 510 + hl.length * 72 + 18 + i * 46));
+  // 批語（文言）與白話一句：依實際行數往下排，不超出紅紙
+  ctx.font = `400 52px ${KAI}`; ctx.fillStyle = "#fff3dc";
+  // 依逗號斷句，能併就併，不在詞中間斷行
+  const hl = [];
+  R.headline.split("，").forEach((c, i, a) => {
+    const piece = c + (i < a.length - 1 ? "，" : "。"), last = hl[hl.length - 1];
+    if (last && ctx.measureText(last + piece).width <= rw - 130) hl[hl.length - 1] = last + piece; else hl.push(piece);
+  });
+  let ty = ry + 492;
+  hl.forEach(t => { ctx.fillText(t, rx + rw / 2, ty); ty += 68; });
+  ctx.font = `400 31px ${KAI}`; ctx.fillStyle = "rgba(255,240,228,.92)";
+  const room = Math.max(0, Math.floor((ry + rh - 58 - (ty + 4)) / 44) + 1);
+  wrap(ctx, R.headlinePlain, rw - 150).slice(0, Math.min(2, room)).forEach(t => { ctx.fillText(t, rx + rw / 2, ty + 4); ty += 44; });
 
   // 五格小籤
   const gy = 1050, gh = 170, gap = 16, gw = (W - 64 * 2 - gap * 4) / 5;
@@ -133,11 +143,12 @@ export async function drawCard(R) {
     ctx.fillStyle = "#2a1a10"; ctx.font = `900 56px ${SONG}`; ctx.fillText(String(g.n), x + gw / 2, gy + 84);
     const [bgc, fgc] = EL_COLOR[g.el];
     ctx.font = `700 24px ${SANS}`; const tw = ctx.measureText(g.el).width + 18;
-    ctx.font = `700 26px ${SONG}`; const lw = ctx.measureText(g.level).width;
+    const lvSize = g.level.length > 2 ? 21 : 26;
+    ctx.font = `700 ${lvSize}px ${SONG}`; const lw = ctx.measureText(g.level).width;
     const startX = x + gw / 2 - (tw + 8 + lw) / 2;
     ctx.fillStyle = bgc; ctx.fillRect(startX, gy + 118, tw, 32);
     ctx.font = `700 24px ${SANS}`; ctx.fillStyle = fgc; ctx.fillText(g.el, startX + tw / 2, gy + 135);
-    ctx.font = `700 26px ${SONG}`; ctx.fillStyle = g.lv >= 1 ? "#2f6b3a" : g.lv <= -1 ? "#a8231a" : "#5a4232";
+    ctx.font = `700 ${lvSize}px ${SONG}`; ctx.fillStyle = g.lv >= 1 ? "#2f6b3a" : g.lv <= -1 ? "#a8231a" : "#5a4232";
     ctx.fillText(g.level, startX + tw + 8 + lw / 2, gy + 135);
   });
   // 頁尾
