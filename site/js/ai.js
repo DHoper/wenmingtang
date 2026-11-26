@@ -15,6 +15,7 @@ export function aiBasis(R) {
   const w = R.wuge, g = k => `${w[k].n}畫（${w[k].el}）${w[k].level}・${w[k].name}`;
   return {
     姓名: R.name, 乾坤: R.gender === "f" ? "坤造（女）" : "乾造（男）", 所問: R.sections.find(s => s.key === "topic")?.title,
+    各字筆畫: R.chars.map(c => `${c.part}「${c.ch}」${c.strokes}畫`).join("、"),
     評等: R.grade, 分數: R.score, 批語: R.headline,
     五格: { 天格: g("tian"), 人格: g("ren"), 地格: g("di"), 外格: g("wai"), 總格: g("zong") },
     三才: `${R.sancai.key} ${R.sancai.level}`,
