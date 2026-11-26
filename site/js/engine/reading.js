@@ -142,6 +142,41 @@ function topicSection(topic, ev, female) {
   return { pi: [pi.join("；") + "。"], bai: bai.join("") };
 }
 
+// 總結：挑出最大的長處與最要顧的地方，依所問補一句，最後給改名結論
+const SUM = {
+  ren: ["人格", "你本人這格是好數，做人做事有底", "你本人這格不好，個性上容易吃虧"],
+  zong: ["總格", "晚運好，愈老愈好過", "晚運較弱，老本要早一點存"],
+  di: ["地格", "前半生有根基，家裡穩", "前半生較辛苦，家裡的事多"],
+  wai: ["外格", "出外人緣好，有貴人", "出外容易碰到小人"],
+  sancai: ["三才", "三才配得順，一路走得順", "三才卡住，做事常常這裡順、那裡卡"],
+  match: ["八字", "名字剛好補到你八字要的", "名字的五行跟你八字不合"],
+  zodiac: ["生肖", "用字合你的生肖", "用字犯到你的生肖"],
+};
+function summarySection(ev, topic, renameWhy) {
+  const W = ev.match ? { ren: .2, di: .12, zong: .12, wai: .06, sancai: .1, match: .3, zodiac: .1 } : { ren: .3, di: .2, zong: .2, wai: .1, sancai: .2 };
+  const items = Object.keys(W).filter(k => ev.parts[k] !== undefined).map(k => ({ k, v: ev.parts[k], w: W[k] }));
+  const best = items.filter(x => x.v >= 78).sort((a, b) => (b.v - 70) * b.w - (a.v - 70) * a.w)[0];
+  const worst = items.filter(x => x.v < 56).sort((a, b) => (a.v - 70) * a.w - (b.v - 70) * b.w)[0];
+  const w = ev.wuge, good = ["生", "被生", "比和"];
+  const topicLine = {
+    career: w.ren.lv > 0 ? "問事業，靠自己做得起來。" : "問事業，根基還要再磨。",
+    love: good.includes(ev.rel.renDi) ? "問感情，家裡跟感情算穩。" : "問感情，家裡跟另一半要多花點心。",
+    money: w.zong.lv > 0 ? "問錢，錢是留得住的。" : "問錢，錢要會存，不要只會賺。",
+    health: "身體照前面講的去顧就好。",
+  }[topic] || "";
+  let end;
+  if (renameWhy.length) {
+    const dir = ev.bazi ? `新名字往${ev.bazi.yong}${ev.bazi.xi.length ? "、" + ev.bazi.xi[0] : ""}去找，人格落在${ev.bazi.yong}最好。` : "新名字先讓人格、總格落在吉數，三才配順。";
+    end = `我的意思是要改。${dir}`;
+  } else end = ev.grade === "上上" || ev.grade === "上" ? "這名字好好用就好。" : "名字可以用，不一定要改。";
+  const pi = [];
+  if (best) pi.push(`長在${SUM[best.k][0]}`);
+  if (worst) pi.push(`短在${SUM[worst.k][0]}`);
+  pi.push(renameWhy.length ? "宜擇吉更易" : ev.grade === "上上" || ev.grade === "上" ? "守之可也" : "可用隨緣");
+  const bai = `總的來講，${best ? `這個名字最好的是${SUM[best.k][1]}` : "這個名字沒有特別突出的地方"}；${worst ? `最要注意的是${SUM[worst.k][2]}` : "也沒有特別要擔心的"}。${topicLine}${end}`;
+  return { key: "summary", title: "總結", pi: [pi.join("，") + "。"], bai };
+}
+
 /** 產生完整批命 R。p: { surname, given, gender, topic, bazi? } */
 export function reading(p) {
   const ev = evaluate(p);
@@ -202,6 +237,8 @@ export function reading(p) {
       ? `我老實講，${renameWhy.join("，")}。這要認真想一下。不想動戶口名簿，取個常用名，天天給人叫，也有效。`
       : ev.grade === "上上" || ev.grade === "上" ? "這名字好好用就好，不用改。" : "名字可以用，沒有非改不可的毛病。想要更好，我擬了幾個，你參考看看。",
   });
+
+  sections.push(summarySection(ev, topic, renameWhy));
 
   return {
     system: "姓名學",

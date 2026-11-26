@@ -428,3 +428,4 @@ button.g { cursor: pointer; font: inherit; }
 /* 招牌依欄寬縮放，五塊一定排得下 */
 .signs { gap: 8px; }
 .signs .sign, .app[data-orient=land] .signs .sign { width: min(66px, calc((100% - 32px) / 5)); }
+.sheet { overflow-x: hidden; } .signs { overflow-x: hidden; justify-content: space-between; }

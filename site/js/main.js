@@ -171,7 +171,7 @@ async function onNameInput(raw) {
 // ───────── 乾坤 ─────────
 function askGender() {
   setPhase("qiankun"); pose("speak");
-  speak(S.mode === "name" ? `<span class="q">男孩還是女孩？</span>還不知道就先選一個。` : `<span class="q">男命還女命？</span>男女算法不一樣。`);
+  speak(S.mode === "name" ? `<span class="q">男孩還是女孩？</span>還不知道就先選一個。` : `<span class="q">男生還是女生？</span>`);
   act.innerHTML = `<div class="tokens" role="group" aria-label="乾坤">
       <button type="button" class="tk" data-g="m" aria-pressed="${S.gender === "m"}"><span class="face"><span class="vt">乾造</span></span><span class="s">男命</span></button>
       <button type="button" class="tk" data-g="f" aria-pressed="${S.gender === "f"}"><span class="face"><span class="vt">坤造</span></span><span class="s">女命</span></button>
@@ -194,7 +194,7 @@ async function loadLunar() {
 }
 function askBirth() {
   setPhase("birth"); pose("speak");
-  speak(S.mode === "name" ? `小孩<span class="q">幾月幾號生的？</span>還沒生，預產期也可以。` : `<span class="q">生日給我，</span>配八字看較準。不給也可以看。`);
+  speak(S.mode === "name" ? `小孩<span class="q">幾月幾號生的？</span>還沒生，預產期也可以。` : `<span class="q">生日方便給嗎？</span>有的話算得比較準。`);
   act.innerHTML = `<div class="props">
       <button type="button" class="prop red" id="giveCard"><span class="in"><span class="t">給生日</span><span class="s">加看八字、生肖</span></span></button>
       <button type="button" class="prop f-wood" id="noCard"><span class="in"><span class="t">先不用</span><span class="s">只看名字筆畫</span></span></button>
@@ -205,7 +205,7 @@ function askBirth() {
 }
 const lunarDay = d => d === 10 ? "初十" : d === 20 ? "二十" : d === 30 ? "三十" : ["初", "十", "廿"][Math.floor((d - 1) / 10)] + "一二三四五六七八九"[(d - 1) % 10];
 function openBirthCard() {
-  speak(`國曆農曆都可以。<span class="q">幾點生的知道嗎？</span>不知道就排三柱。`);
+  speak(`國曆農曆都可以。<span class="q">幾點生的知道嗎？</span>不知道也沒關係。`);
   act.innerHTML = `<form class="birth" id="birthForm" autocomplete="off">
       <div class="seg" role="group" aria-label="曆法"><button type="button" data-cal="solar">國曆</button><button type="button" data-cal="lunar">農曆</button></div>
       <div class="wheels">
@@ -280,7 +280,7 @@ function openBirthCard() {
 // ───────── 問事（招牌） ─────────
 function askTopic() {
   setPhase("topic"); pose("speak");
-  speak(`<span class="q">要問哪方面？</span>都不選，我就整體看。`);
+  speak(`<span class="q">特別想問哪方面？</span>沒有的話我就整個看。`);
   act.innerHTML = `<div class="signs" role="group" aria-label="招牌">${TOPICS.map(([k, t]) => `<button type="button" class="sign" data-t="${k}" aria-pressed="${S.topic === k}"><span class="t vt">${t}</span></button>`).join("")}</div>
     <button type="button" class="btn main wide" id="goCount">請先生算</button>`;
   act.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { S.topic = b.dataset.t; act.querySelectorAll(".sign").forEach(x => x.setAttribute("aria-pressed", x === b)); sfx("chime"); pulse(b, "swing", 1200); });
@@ -295,7 +295,7 @@ async function count() {
   S.R = R;
   const skip = document.createElement("button"); skip.className = "btn ghost skip"; skip.textContent = "快些"; skip.onclick = () => { fast = true; skip.remove(); };
   document.body.append(skip);
-  speak(`我算給你看，<span class="q">筆畫照康熙字典。</span>`);
+  speak(`<span class="q">我來算一下。</span>`);
   act.innerHTML = `<div class="grid5" id="grid5">${gridTiles(R, true)}</div><p class="sancai pending" id="scLine" style="opacity:0">三才 ${R.sancai.key.split("").join("・")}　${R.sancai.level}</p><div id="countBazi"></div>`;
   renderPaper();
   const cells = [...paperText.querySelectorAll(".c")];
@@ -351,7 +351,7 @@ function showReading(R, opts = {}) {
   renderPaper({ split: { surname: [...R.surname], given: [...R.given] } });
   paperText.querySelectorAll(".c").forEach((el, i) => { el.classList.add("shown"); el.querySelector(".n").textContent = R.chars[i].strokes; });
   $("#seal").classList.add("on");
-  speak(R.renameAdvised ? `這個名字喔……<span class="q">我老實講。</span>` : R.grade === "上上" || R.grade === "上" ? `<span class="q">這名字不錯。</span>你看看。` : `<span class="q">還可以，</span>有幾個所在要注意。`);
+  speak(R.renameAdvised ? `這個名字喔……<span class="q">我就直說了。</span>` : R.grade === "上上" || R.grade === "上" ? `<span class="q">這名字不錯。</span>你看看。` : `<span class="q">還可以，</span>有幾個所在要注意。`);
   const view = S.view;
   if (S.justCounted) { S.justCounted = false; setTimeout(() => sfx("bell"), 120); }
   setTimeout(() => sfx("paper"), 260);
