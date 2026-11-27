@@ -163,7 +163,7 @@
 /* ───── 分享面板 ───── */
 .share-in { position: relative; }
 .share-x { position: absolute; right: -6px; top: -8px; z-index: 2; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; background: url(../assets/props/seal.webp) center / 40px no-repeat; font: 900 15px/1 var(--song); color: #b01e14; }
-.share-icons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.share-icons { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; container-type: inline-size; }
 .sicon { display: grid; justify-items: center; gap: 4px; min-height: 64px; padding: 6px 0 4px; background: none; border: 0; text-decoration: none; color: var(--ink); font: 400 13px/1.2 var(--kai); }
 .sicon svg { width: 34px; height: 34px; padding: 7px; box-sizing: content-box; background: url(../assets/props/seal.webp) center / contain no-repeat; color: #9c1f15; }
 .share-more { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
@@ -377,3 +377,13 @@
 .paper-text .n { left: calc(100% + .66em); }
 .kp-grp { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 @media (max-width: 480px) { .kp-grp { flex-basis: 100%; } }
+
+/* 11-27 分享面板防破版：圖示鈕字級隨寬度縮，不換行不溢出；不讓系統放大字級 */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.share-icons .sicon { min-width: 0; overflow: hidden; }
+.share-icons .sicon span { display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: clip; font-size: clamp(10px, 3.4cqi, 14px); letter-spacing: 0; }
+.share-more { gap: 6px; }
+.share-more .opt { min-width: 0; white-space: nowrap; }
+.share-note, .pic-tip { text-wrap: pretty; overflow-wrap: anywhere; }
+.share-icons .sicon svg { width: clamp(22px, 12cqi, 34px); height: auto; aspect-ratio: 1; padding: clamp(5px, 2.4cqi, 7px); }
+#shH { padding-inline: 2.2em; text-wrap: balance; }

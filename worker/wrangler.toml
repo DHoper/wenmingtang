@@ -5,9 +5,8 @@ compatibility_date = "2025-06-01"
 [vars]
 # 允許呼叫的網站來源（逗號分隔）。GitHub Pages 上線後若網域不同，改這裡。
 ALLOWED_ORIGINS = "https://gxgemini777.github.io,https://dhoper.github.io,http://127.0.0.1:8765,http://localhost:8765"
-USER_READINGS = "10"
-USER_ASKS = "30"
-SITE_CALLS = "400"
+# 不限個人次數；全站每天最多呼叫 AI 幾次（批命＋追問合計，臺灣時間零點重算）
+SITE_DAILY = "200"
 
 # 每日次數已改記在 D1 的 counters 表（原子遞增）；舊的 KV（LIMITS）不再使用
 

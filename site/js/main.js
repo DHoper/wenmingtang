@@ -544,7 +544,7 @@ function runAIReading(R) {
     if (curReading !== R) return;
     const note = $("#aiNote");
     if (e.code === "reading_limit" || e.code === "site_limit") {
-      if (note) { note.hidden = false; note.textContent = e.code === "site_limit" ? "今晚來問的人太多，先生歇了。下面先照筆畫排給你看。" : `今天先生親口批過${num(LIMITS.USER_READINGS)}張了，下面先照筆畫排給你看。`; }
+      if (note) { note.hidden = false; note.textContent = e.code === "site_limit" ? "今晚來問的人太多，先生歇了。下面先照筆畫排給你看。" : "先生一時沒接上話，下面先照筆畫排給你看。"; }
       if (!S.limitShown) { S.limitShown = true; limitModal(e.code); }
     } else if (e.code !== "unavailable" && note) { note.hidden = false; note.textContent = "香斷了，先生這回講不下去。下面先照筆畫排給你看。"; }
   });
@@ -600,8 +600,6 @@ function setupAsk(R) {
 function limitModal(kind) {
   const site = kind === "site_limit";
   const MSG = {
-    reading_limit: [`今天已經親口替你批了${num(LIMITS.USER_READINGS)}張，神力耗盡，要歇一下。`, `先生一天只親口批${num(LIMITS.USER_READINGS)}張`],
-    user_limit: [`今天已經回你${num(LIMITS.USER_ASKS)}句了，神力耗盡，要歇一下。`, `先生一天只回${num(LIMITS.USER_ASKS)}句`],
     followup_limit: [`這張問過${num(LIMITS.FOLLOWUPS)}句了，該講的都講了。`, `一張紙只問${num(LIMITS.FOLLOWUPS)}句`],
     site_limit: ["今晚來問的人太多，廟裡的香都燒完了，先生也要歇了。", `今晚的香只夠點${num(LIMITS.SITE_CALLS)}回`],
   }[kind] || ["先生要歇一下。", "次數有限"];
@@ -738,6 +736,7 @@ function fullText(R) {
 const ICON = {
   line: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.5 3 2 6.6 2 11c0 3.9 3.5 7.2 8.3 7.9.3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.6 1.1-.5 6-3.5 8.1-6C21.4 14.4 22 12.8 22 11c0-4.4-4.5-8-10-8Zm-3.6 10.4H6.4a.5.5 0 0 1-.5-.5V8.9a.5.5 0 0 1 1 0v3.5h1.5a.5.5 0 0 1 0 1Zm2 -.5a.5.5 0 0 1-1 0V8.9a.5.5 0 0 1 1 0v4Zm4.6 0a.5.5 0 0 1-.9.3l-2-2.8v2.5a.5.5 0 0 1-1 0V8.9a.5.5 0 0 1 .9-.3l2 2.8V8.9a.5.5 0 0 1 1 0v4Zm3.2-2.5a.5.5 0 0 1 0 1h-1.5v1h1.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5V8.9c0-.3.2-.5.5-.5h2a.5.5 0 0 1 0 1h-1.5v1h1.5Z"/></svg>`,
   fb: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.3v7A10 10 0 0 0 22 12Z"/></svg>`,
+  ig: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 7.2A4.8 4.8 0 1 0 12 16.8 4.8 4.8 0 0 0 12 7.2Zm0 7.8a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm4.98-8.94a1.12 1.12 0 1 1 0 2.24 1.12 1.12 0 0 1 0-2.24ZM12 3.6c-2.28 0-2.57.01-3.46.05-.9.04-1.5.18-2.04.39a4.12 4.12 0 0 0-1.49.97 4.12 4.12 0 0 0-.97 1.49c-.21.54-.35 1.15-.39 2.04C3.61 9.43 3.6 9.72 3.6 12s.01 2.57.05 3.46c.04.9.18 1.5.39 2.04.21.55.5 1.02.97 1.49.47.47.94.76 1.49.97.54.21 1.15.35 2.04.39.89.04 1.18.05 3.46.05s2.57-.01 3.46-.05c.9-.04 1.5-.18 2.04-.39a4.12 4.12 0 0 0 1.49-.97c.47-.47.76-.94.97-1.49.21-.54.35-1.15.39-2.04.04-.89.05-1.18.05-3.46s-.01-2.57-.05-3.46c-.04-.9-.18-1.5-.39-2.04a4.12 4.12 0 0 0-.97-1.49 4.12 4.12 0 0 0-1.49-.97c-.54-.21-1.15-.35-2.04-.39C14.57 3.61 14.28 3.6 12 3.6Zm0 1.62c2.24 0 2.5.01 3.39.05.82.04 1.26.17 1.56.29.39.15.67.33.96.62.29.29.47.57.62.96.12.3.25.74.29 1.56.04.89.05 1.15.05 3.39s-.01 2.5-.05 3.39c-.04.82-.17 1.26-.29 1.56-.15.39-.33.67-.62.96-.29.29-.57.47-.96.62-.3.12-.74.25-1.56.29-.89.04-1.15.05-3.39.05s-2.5-.01-3.39-.05c-.82-.04-1.26-.17-1.56-.29a2.6 2.6 0 0 1-.96-.62 2.6 2.6 0 0 1-.62-.96c-.12-.3-.25-.74-.29-1.56-.04-.89-.05-1.15-.05-3.39s.01-2.5.05-3.39c.04-.82.17-1.26.29-1.56.15-.39.33-.67.62-.96.29-.29.57-.47.96-.62.3-.12.74-.25 1.56-.29.89-.04 1.15-.05 3.39-.05Z"/></svg>`,
   th: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.7 11.2c-.1 0-.2-.1-.3-.1-.2-3.2-2-5-4.9-5-1.8 0-3.2.8-4.1 2.1l1.6 1.1c.7-1 1.7-1.2 2.5-1.2 1 0 1.8.3 2.2.9.4.4.6 1 .7 1.7-.8-.1-1.7-.2-2.6-.1-2.6.1-4.3 1.7-4.2 3.8.1 1.1.6 2 1.5 2.6.8.5 1.8.8 2.8.7 1.4-.1 2.5-.6 3.2-1.6.6-.7.9-1.7 1-2.9.7.4 1.2.9 1.5 1.5.5 1.1.5 2.8-.9 4.2-1.2 1.2-2.7 1.8-4.9 1.8-2.5 0-4.4-.8-5.6-2.4-1.1-1.5-1.7-3.6-1.8-6.3.1-2.7.7-4.8 1.8-6.3C7.4 4.4 9.3 3.6 11.8 3.6c2.5 0 4.4.8 5.7 2.4.6.8 1.1 1.8 1.4 2.9l1.9-.5c-.4-1.4-1-2.6-1.8-3.6C17.4 2.7 15 1.7 11.8 1.7S6.2 2.7 4.6 4.7C3.2 6.5 2.5 9 2.4 12c.1 3 .8 5.5 2.2 7.3 1.6 2 4 3 7.2 3 2.8 0 4.8-.7 6.4-2.3 2.1-2.1 2-4.7 1.3-6.3-.5-1.1-1.4-2-2.8-2.5Zm-4.9 4.6c-1.1.1-2.3-.4-2.3-1.5-.1-.8.6-1.7 2.4-1.8h.6c.7 0 1.3.1 1.9.2-.2 2.4-1.4 3-2.6 3.1Z"/></svg>`,
 };
 async function openShare(R) {
@@ -756,10 +755,11 @@ async function openShare(R) {
         <a class="sicon" id="toLine" target="_blank" rel="noopener">${ICON.line}<span>LINE</span></a>
         <a class="sicon" id="toFb" target="_blank" rel="noopener">${ICON.fb}<span>臉書</span></a>
         <a class="sicon" id="toTh" target="_blank" rel="noopener">${ICON.th}<span>Threads</span></a>
+        <button type="button" class="sicon" id="toIg">${ICON.ig}<span>IG限動</span></button>
         <button type="button" class="sicon" id="shLink"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.6 13.4a1 1 0 0 1 0-1.4l3.5-3.5a1 1 0 1 1 1.4 1.4L12 13.4a1 1 0 0 1-1.4 0Zm-2.8 5.3a4 4 0 0 1-2.8-6.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a2 2 0 0 0 2.8 2.8l2.1-2.1a1 1 0 1 1 1.4 1.4l-2.1 2.1a4 4 0 0 1-2.8 1.2Zm8.5-5.7a1 1 0 0 1-.7-1.7l2.1-2.1a2 2 0 0 0-2.8-2.8l-2.1 2.1a1 1 0 1 1-1.4-1.4l2.1-2.1a4 4 0 0 1 5.6 5.6l-2.1 2.1a1 1 0 0 1-.7.3Z"/></svg><span>複製連結</span></button>
       </div>
       <p class="share-note">朋友在LINE、臉書看到的，就是上面這張卡，點進來就能寫自己的名字。你的生日不會傳出去。批命卡在問名堂放三十天。</p>
-      <div class="share-more"><button type="button" class="opt small" id="shLong">${noDownload ? "看整張長圖" : "存整張長圖"}</button>${noDownload ? "" : `<button type="button" class="opt small" id="shStory">存IG限動圖</button>`}<button type="button" class="opt small" id="shText">抄整張批命</button></div>
+      <div class="share-more"><button type="button" class="opt small" id="shLong">${noDownload ? "看整張長圖" : "存整張長圖"}</button><button type="button" class="opt small" id="shText">抄整張批命</button></div>
     </div>`;
   document.body.append(box);
   requestAnimationFrame(() => box.classList.add("on"));
@@ -824,9 +824,25 @@ async function openShare(R) {
       save(u, fname);
     } catch (_) { toast("長圖沒畫成，再按一次"); }
   };
-  box.querySelector("#shStory")?.addEventListener("click", async () => {
-    try { save(URL.createObjectURL(await cardBlob(await drawCard(R, true))), `問名堂_${R.name}_限動.png`); } catch (_) { toast("限動圖沒畫成，再按一次"); }
-  });
+  // 3. IG 限動：IG 沒有網頁分享連結。先抄好連結（給限動的「連結」貼紙），再把 9:16 限動圖交給系統分享選 IG；
+  //    不能分享檔案就存下來；在 App 內建瀏覽器裡不能存，就放大讓人長按存圖
+  let storyP = null;
+  const getStory = () => storyP || (storyP = drawCard(R, true).then(cardBlob));
+  getStory().catch(() => {});
+  box.querySelector("#toIg").onclick = async () => {
+    if (!ready) return toast("紅紙還沒乾，等一下");
+    try { await navigator.clipboard.writeText(link); } catch (_) {}
+    try {
+      const blob = await getStory(), fname = `問名堂_${R.name}_限動.png`, u = URL.createObjectURL(blob);
+      if (noDownload) { zoom(u, true); return toast("長按存圖，到IG發限動；連結已抄好，可貼在連結貼紙"); }
+      const file = new File([blob], fname, { type: "image/png" });
+      if (canShareNative && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file] }); toast("選IG發限動；連結已抄好，可貼在連結貼紙"); } catch (_) {}
+        return;
+      }
+      save(u, fname); toast("限動圖存好了，連結也抄好了");
+    } catch (_) { toast("限動圖沒畫成，再按一次"); }
+  };
 }
 
 // 朋友傳來的連結：#n=名字&g=m|f&s=姓氏字數&t=所問&b=1（原批有配八字）

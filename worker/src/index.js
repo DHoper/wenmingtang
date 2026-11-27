@@ -3,13 +3,12 @@
 // 2. POST /card  分享卡：存 1200×630 預覽圖到 D1，回 /s/<id>；GET /s/<id> 給 LINE、臉書抓預覽，人點進去轉到網站；GET /c/<id>.jpg 是圖。
 // 金鑰放在 Worker 機密：npx wrangler secret put DEEPSEEK_API_KEY（不寫進任何檔案）。SALT 也是機密。
 // 每日次數記在 D1 的 counters 表（原子遞增，先扣再呼叫 DeepSeek，失敗退回），臺灣時間零點重算：
-//   每台裝置（網頁產生的匿名 ID）每天 USER_READINGS 張批命、USER_ASKS 句追問；
-//   每個 IP 另有寬一點的上限（手機網路很多人共用同一個 IP）；全站每天 SITE_CALLS 次。
+//   不限個人次數；全站每天 SITE_DAILY 次（批命＋追問合計，預設 200，業主 11-27 定）。
+//   舊的 USER_READINGS／USER_ASKS／SITE_CALLS 變數不再讀取（後台若還留著也不影響）。每分鐘防連點照舊。
 import { messagesFor, cleanQuestion, LIMITS } from "../../site/js/ai-prompt.js";
 
 const DEFAULT_ORIGINS = "https://gxgemini777.github.io,https://dhoper.github.io,http://127.0.0.1:8765,http://localhost:8765";
 const SITE_PATH = "/wenmingtang/";
-const IP_FACTOR = 8; // 同一個 IP 的上限 = 每台裝置上限 × 8
 const burst = new Map(); // 短時間連發的保護（同一個 isolate 內）
 
 function json(obj, status, headers) {
@@ -117,20 +116,12 @@ async function askAI(req, env, cors) {
   const question = mode === "ask" ? cleanQuestion(rawQ) : "";
   if (mode === "ask" && !question) return json({ error: "empty" }, 400, cors);
 
-  const userMax = mode === "reading" ? +(env.USER_READINGS || LIMITS.USER_READINGS) : +(env.USER_ASKS || LIMITS.USER_ASKS);
-  const siteMax = +(env.SITE_CALLS || LIMITS.SITE_CALLS);
-  const salt = env.SALT || "wenming", day = twDay(), m = mode === "reading" ? "r" : "a";
-  const cid = typeof body.cid === "string" && /^[A-Za-z0-9-]{8,64}$/.test(body.cid) ? body.cid : "";
-  const ipH = await sha(ip + salt), devH = cid ? await sha("c" + cid + salt) : ipH;
-  const kDev = `d:${day}:${devH}:${m}`, kIp = `i:${day}:${ipH}:${m}`, kSite = `s:${day}`;
-  const db = env.CARDS, limitErr = mode === "reading" ? "reading_limit" : "user_limit";
-  // 先扣：裝置 → IP → 全站，任何一關沒過就把前面扣的退回
-  const used = await bump(db, kDev, userMax);
-  if (used == null) return json({ error: limitErr, max: userMax }, 429, cors);
-  if ((await bump(db, kIp, userMax * IP_FACTOR)) == null) { await unbump(db, kDev); return json({ error: limitErr, max: userMax }, 429, cors); }
+  const siteMax = +env.SITE_DAILY || LIMITS.SITE_CALLS;
+  const db = env.CARDS, kSite = `s:${twDay()}`;
+  // 先扣全站次數再呼叫 DeepSeek，失敗退回
   const siteUsed = await bump(db, kSite, siteMax);
-  if (siteUsed == null) { await Promise.all([unbump(db, kDev), unbump(db, kIp)]); return json({ error: "site_limit", max: siteMax }, 429, cors); }
-  const refund = () => Promise.all([unbump(db, kDev), unbump(db, kIp), unbump(db, kSite)]).catch(() => {});
+  if (siteUsed == null) return json({ error: "site_limit", max: siteMax }, 429, cors);
+  const refund = () => unbump(db, kSite).catch(() => {});
 
   let up;
   try {
@@ -141,7 +132,7 @@ async function askAI(req, env, cors) {
     });
   } catch (_) { up = null; }
   if (!up || !up.ok || !up.body) { await refund(); return json({ error: "upstream", status: up ? up.status : 0 }, 502, cors); }
-  return new Response(up.body, { headers: { ...cors, "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-store", "X-User-Left": String(Math.max(0, userMax - used)), "X-Site-Left": String(Math.max(0, siteMax - siteUsed)) } });
+  return new Response(up.body, { headers: { ...cors, "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-store", "X-Site-Left": String(Math.max(0, siteMax - siteUsed)) } });
 }
 
 export default {
@@ -149,7 +140,7 @@ export default {
     const allowed = (env.ALLOWED_ORIGINS || DEFAULT_ORIGINS).split(",").map(s => s.trim()).filter(Boolean);
     const origin = req.headers.get("Origin") || "";
     const ok = allowed.includes(origin);
-    const cors = { "Access-Control-Allow-Origin": ok ? origin : allowed[0], "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Expose-Headers": "X-User-Left, X-Site-Left", "Access-Control-Max-Age": "86400", Vary: "Origin" };
+    const cors = { "Access-Control-Allow-Origin": ok ? origin : allowed[0], "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Expose-Headers": "X-Site-Left", "Access-Control-Max-Age": "86400", Vary: "Origin" };
     const url = new URL(req.url);
     if (req.method === "GET" || req.method === "HEAD") {
       let m;

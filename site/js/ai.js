@@ -13,18 +13,12 @@ function getSample() {
 const framed = (() => { try { return top !== self; } catch (_) { return true; } })();
 export async function aiAvailable() { return framed ? !!(await getSample()) : !!CONFIG.AI_ENDPOINT || !!(await getSample()); }
 
-// 本機也記一份今天問了幾次（臺灣時間），不必等伺服器就先擋；伺服器那邊另有每人、全站的真正上限
-const twDay = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
-const LS = { ask: "wenming:asks2", reading: "wenming:readings2" };
-function usedToday(k = "ask") { try { const v = JSON.parse(localStorage.getItem(LS[k])); return v && v.d === twDay() ? v.n : 0; } catch (_) { return 0; } }
-function markUsed(k = "ask", n) { try { localStorage.setItem(LS[k], JSON.stringify({ d: twDay(), n: n ?? usedToday(k) + 1 })); } catch (_) {} }
+// 不限個人每日次數，只有全站每天 LIMITS.SITE_CALLS 次（伺服器把關，用完回 site_limit）
 function cid() {
   try { let v = localStorage.getItem("wenming:cid"); if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)); localStorage.setItem("wenming:cid", v); } return v; } catch (_) { return ""; }
 }
-// 伺服器回的剩餘次數，拿來校正本機記的
-function syncLeft(res, k, max) { const left = +res.headers.get("X-User-Left"); if (res.headers.has("X-User-Left") && left >= 0) markUsed(k, Math.max(0, max - left)); }
-export function askLeft() { return Math.max(0, LIMITS.USER_ASKS - usedToday("ask")); }
-export function readingsLeft() { return Math.max(0, LIMITS.USER_READINGS - usedToday("reading")); }
+export function askLeft() { return Infinity; }
+export function readingsLeft() { return Infinity; }
 
 // 看過的 AI 批命存在瀏覽器，重看不再扣次數（最多留 20 張）
 const CK = "wenming:aiCache";
@@ -113,10 +107,8 @@ export async function aiAsk(R, question, onText0) {
     const res = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ basis: aiBasis(R), question: q, cid: cid() }) });
     if (!res.ok || !res.body) {
       let code = "http"; try { code = (await res.json()).error || code; } catch (_) {}
-      if (code === "user_limit") markUsed("ask", LIMITS.USER_ASKS);
       throw Object.assign(new Error(code), { code });
     }
-    markUsed(); syncLeft(res, "ask", LIMITS.USER_ASKS);
     const rd = res.body.getReader(), dec = new TextDecoder(); let buf = "", txt = "";
     for (;;) {
       const { done, value } = await rd.read(); if (done) break;
@@ -130,7 +122,6 @@ export async function aiAsk(R, question, onText0) {
   }
   const s2 = sample || await getSample();
   if (!s2) throw Object.assign(new Error("unavailable"), { code: "unavailable" });
-  markUsed();
   let out = "";
   await s2(messagesFor(aiBasis(R), q).map(m => m.content).join("\n\n"), { cache: false, onText: ({ text }) => { if (text !== "Thinking...") { out = text; onText(text); } } });
   return out;
@@ -138,7 +129,7 @@ export async function aiAsk(R, question, onText0) {
 
 /**
  * 整張批命由 AI 寫：onUpdate(段落物件, 是否寫完)。看過的直接用存檔、不扣次數。
- * 失敗時丟出 { code }：reading_limit、site_limit、unavailable、http
+ * 失敗時丟出 { code }：site_limit、unavailable、http
  */
 const inflight = new Map(); // readingKey → { parts, subs:Set, promise }
 export function readingPending(R) { const f = inflight.get(readingKey(R)); return f ? f.promise : null; }
@@ -162,10 +153,8 @@ export async function aiReadingFull(R, onUpdate) {
         const res = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ basis: aiBasis(R), mode: "reading", cid: cid() }) });
         if (!res.ok || !res.body) {
           let code = "http"; try { code = (await res.json()).error || code; } catch (_) {}
-          if (code === "reading_limit") markUsed("reading", LIMITS.USER_READINGS);
           throw Object.assign(new Error(code), { code });
         }
-        markUsed("reading"); syncLeft(res, "reading", LIMITS.USER_READINGS);
         const rd = res.body.getReader(), dec = new TextDecoder(); let buf = "";
         for (;;) {
           const { done, value } = await rd.read(); if (done) break;
@@ -178,7 +167,6 @@ export async function aiReadingFull(R, onUpdate) {
       } else {
         const s2 = sample || await getSample();
         if (!s2) throw Object.assign(new Error("unavailable"), { code: "unavailable" });
-        markUsed("reading");
         await s2(messagesFor(aiBasis(R), "", "reading").map(m => m.content).join("\n\n"), { cache: false, onText: ({ text }) => { if (text !== "Thinking...") { txt = text; job.parts = parseReading(txt); emit(false); } } });
       }
     } catch (e) {

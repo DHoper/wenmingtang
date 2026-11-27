@@ -70,7 +70,12 @@ export function shareText(R) {
 
 /** 畫批命紅紙分享圖，回傳canvas（1080×1350） */
 export async function drawCard(R, story = false) {
-  const W = 1080, H = story ? 1920 : 1350, oy = (H - 1350) / 2;
+  // 限動版（1080×1920）不是把方卡置中，而是重新排版：上下各留 IG 介面會蓋住的安全區（約 250／320px），
+  // 中段拉長紅紙、名字字放大，下方留給連結貼紙
+  const W = 1080, H = story ? 1920 : 1350;
+  const L = story
+    ? { py: 250, pw: 480, top: 440, lh: 790, gy: 1268, f1: 1500, f2: 1546, nameMax: 172 }
+    : { py: 44, pw: 420, top: 250, lh: 760, gy: 1050, f1: 1268, f2: 1310, nameMax: 150 };
   const [bg, plaque, frame, red, paper, slip, seal] = await Promise.all([
     "assets/scene/bg.webp", "assets/ui/plaque.webp", "assets/ui/red-frame.webp", "assets/ui/redpaper-light.webp",
     "assets/ui/paper.webp", "assets/ui/slip-frame.webp", "assets/props/seal.webp",
@@ -93,22 +98,25 @@ export async function drawCard(R, story = false) {
   const gr = ctx.createLinearGradient(0, 0, 0, H);
   gr.addColorStop(0, "rgba(8,10,18,.35)"); gr.addColorStop(.3, "rgba(8,10,18,.55)"); gr.addColorStop(1, "rgba(8,10,18,.88)");
   ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
-  ctx.translate(0, oy);
+  if (story) {
+    const tg = ctx.createLinearGradient(0, 0, 0, 230); tg.addColorStop(0, "rgba(6,8,14,.85)"); tg.addColorStop(1, "rgba(6,8,14,0)");
+    ctx.fillStyle = tg; ctx.fillRect(0, 0, W, 230);
+  }
 
   // 匾額
-  const pw = 420, ph = pw * plaque.naturalHeight / plaque.naturalWidth, px = (W - pw) / 2, py = 44;
+  const pw = L.pw, ph = pw * plaque.naturalHeight / plaque.naturalWidth, px = (W - pw) / 2, py = L.py;
   ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 24; ctx.shadowOffsetY = 10;
   ctx.drawImage(plaque, px, py, pw, ph);
   ctx.shadowColor = "transparent";
-  ctx.font = `900 64px ${SONG}`; ctx.fillStyle = "#f3d48c";
+  ctx.font = `900 ${story ? 72 : 64}px ${SONG}`; ctx.fillStyle = "#f3d48c";
   drawSpaced(ctx, "問名堂", W / 2, py + ph / 2 + 2, 22);
 
   // 左：名字紅紙（直式，一字一行）
-  const lx = 64, ly = 250, lw = 190, lh = 760;
+  const lx = 64, ly = L.top, lw = story ? 214 : 190, lh = L.lh;
   shadow(ctx, () => { tile(ctx, red, lx, ly, lw, lh, 260); });
   nine(ctx, frame, 56, lx, ly, lw, lh, 18);
   tile(ctx, red, lx + 14, ly + 14, lw - 28, lh - 28, 260);
-  const n = nameChars.length, fs = n >= 5 ? 112 : n === 4 ? 130 : 150, lineH = fs * 1.12;
+  const n = nameChars.length, fs = Math.min(L.nameMax, n >= 5 ? 112 * L.nameMax / 150 : n === 4 ? 130 * L.nameMax / 150 : L.nameMax), lineH = fs * 1.12;
   ctx.font = `900 ${fs}px ${SONG}`; ctx.fillStyle = "#170905";
   const top = ly + lh / 2 - (lineH * n) / 2 - 20;
   nameChars.forEach((c, i) => ctx.fillText(c, lx + lw / 2, top + lineH * (i + .5)));
@@ -120,13 +128,13 @@ export async function drawCard(R, story = false) {
   ctx.fillText("問", 0, -16); ctx.fillText("名", 0, 18); ctx.restore();
 
   // 右：評等紅紙
-  const rx = 290, ry = 250, rw = 726, rh = 760;
+  const rx = lx + lw + 36, ry = L.top, rw = W - 64 - rx, rh = L.lh;
   shadow(ctx, () => nine(ctx, frame, 56, rx, ry, rw, rh, 34));
   ctx.fillStyle = "#ffe6d2"; ctx.font = `700 34px ${SONG}`;
-  ctx.fillText(R.gender === "f" ? "坤造" : "乾造", rx + rw / 2, ry + 82);
+  ctx.fillText(R.gender === "f" ? "坤造" : "乾造", rx + rw / 2, ry + (story ? 92 : 82));
   ctx.font = `900 ${R.grade.length > 1 ? 230 : 260}px ${SONG}`; ctx.fillStyle = "#ffe3a3";
   ctx.shadowColor = "rgba(70,0,0,.75)"; ctx.shadowOffsetY = 6; ctx.shadowBlur = 0;
-  drawSpaced(ctx, R.grade, rx + rw / 2, ry + 260, 20);
+  drawSpaced(ctx, R.grade, rx + rw / 2, ry + (story ? 290 : 260), 20);
   ctx.shadowColor = "transparent"; ctx.shadowOffsetY = 0;
   // 批語（文言）與白話一句：依實際行數往下排，不超出紅紙
   ctx.font = `400 52px ${KAI}`; ctx.fillStyle = "#fff3dc";
@@ -136,14 +144,14 @@ export async function drawCard(R, story = false) {
     const piece = c + (i < a.length - 1 ? "，" : "。"), last = hl[hl.length - 1];
     if (last && ctx.measureText(last + piece).width <= rw - 130) hl[hl.length - 1] = last + piece; else hl.push(piece);
   });
-  let ty = ry + 492;
+  let ty = ry + (story ? 530 : 492);
   hl.forEach(t => { ctx.fillText(t, rx + rw / 2, ty); ty += 68; });
   ctx.font = `400 31px ${KAI}`; ctx.fillStyle = "rgba(255,240,228,.92)";
   const room = Math.max(0, Math.floor((ry + rh - 58 - (ty + 4)) / 44) + 1);
-  wrap(ctx, R.headlinePlain, rw - 150).slice(0, Math.min(2, room)).forEach(t => { ctx.fillText(t, rx + rw / 2, ty + 4); ty += 44; });
+  wrap(ctx, R.headlinePlain, rw - 150).slice(0, Math.min(story ? 3 : 2, room)).forEach(t => { ctx.fillText(t, rx + rw / 2, ty + 4); ty += 44; });
 
   // 五格小籤
-  const gy = 1050, gh = 170, gap = 16, gw = (W - 64 * 2 - gap * 4) / 5;
+  const gy = L.gy, gh = 170, gap = 16, gw = (W - 64 * 2 - gap * 4) / 5;
   GRID_KEYS.forEach((k, i) => {
     const g = R.wuge[k], x = 64 + i * (gw + gap);
     shadow(ctx, () => tile(ctx, paper, x + 6, gy + 6, gw - 12, gh - 12, 300));
@@ -161,9 +169,9 @@ export async function drawCard(R, story = false) {
   });
   // 頁尾
   ctx.font = `400 30px ${KAI}`; ctx.fillStyle = "rgba(246,234,212,.85)";
-  ctx.fillText("夜裡的廟口，把名字交給算命先生。你的名字呢？", W / 2, 1268);
+  ctx.fillText("夜裡的廟口，把名字交給算命先生。你的名字呢？", W / 2, L.f1);
   ctx.font = `500 24px ${SANS}`; ctx.fillStyle = "rgba(232,196,122,.9)";
-  ctx.fillText(siteURL().replace(/^https?:\/\//, "").replace(/\/$/, ""), W / 2, 1310);
+  ctx.fillText(siteURL().replace(/^https?:\/\//, "").replace(/\/$/, ""), W / 2, L.f2);
   return cv;
 }
 function shadow(ctx, fn) { ctx.save(); ctx.shadowColor = "rgba(0,0,0,.55)"; ctx.shadowBlur = 26; ctx.shadowOffsetY = 12; fn(); ctx.restore(); }
