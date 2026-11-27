@@ -54,6 +54,8 @@ export function shareLink(R) {
   const q = new URLSearchParams({ n: R.name, g: R.gender, s: String(R.surname.length), gr: R.grade, sc: String(R.score) });
   if (R.topic && R.topic !== "all") q.set("t", R.topic);
   if (R.bazi) q.set("b", "1");
+  // 配了八字的評等與判詞，朋友那邊算不出來（生日不傳），原樣帶過去
+  q.set("h", R.headline);
   // r/1.html～r/5.html 各有自己的預覽圖（上上～下）；名字放在 # 後面
   return siteURL().replace(/[^/]*$/, "") + `r/${GRADES.indexOf(R.grade) + 1}.html#` + q.toString();
 }

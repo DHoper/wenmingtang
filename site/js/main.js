@@ -13,7 +13,7 @@ import { aiAvailable, aiAsk, askLeft, LIMITS, aiReadingFull, readingsLeft, readi
 import { READING_TAGS } from "./ai-prompt.js";
 import { sfx, soundOn, setSound } from "./sfx.js";
 import { particles, crossfade, typeHTML, riseOnChange, pulse, reduced } from "./fx.js";
-import { drawCard, drawLongCard, drawOgCard, uploadCard, cardBlob, shareLink, shareText, noDownload, framed, keyLines, summaryLine } from "./share.js";
+import { drawCard, drawLongCard, drawOgCard, uploadCard, cardBlob, shareLink, shareText, noDownload, framed, keyLines, summaryLine, GRADES } from "./share.js";
 {
 const $ = s => document.querySelector(s);
 const app = $("#app"), say = $("#say"), act = $("#act"), sheet = $("#sheet"), paper = $("#paper"), paperText = $("#paperText"), canvas = $("#canvas"), viewport = $("#viewport");
@@ -770,7 +770,8 @@ async function openShare(R) {
   box.querySelector("#shClose").onclick = close;
   const msg = () => text + "\n" + link;
   const setLinks = () => {
-    box.querySelector("#toLine").href = `https://social-plugins.line.me/lineit/share?url=${enc(link)}&text=${enc(text)}`;
+    // LINE 官方的「分享文字」：網址放在文字裡，一定會跟著過去，LINE 也會照網址抓預覽卡
+    box.querySelector("#toLine").href = `https://line.me/R/share?text=${enc(msg())}`;
     box.querySelector("#toFb").href = `https://www.facebook.com/sharer/sharer.php?u=${enc(link)}`;
     box.querySelector("#toTh").href = `https://www.threads.com/intent/post?text=${enc(text)}&url=${enc(link)}`;
   };
@@ -807,7 +808,8 @@ async function openShare(R) {
   ready = true; setLinks();
   main.disabled = false;
   main.textContent = canShareNative ? "傳給朋友" : "複製連結";
-  main.onclick = canShareNative ? async () => { try { await navigator.share({ title: "問名堂", text, url: link }); } catch (_) {} } : () => copy(msg(), "連結抄好了，貼到LINE會帶著批命卡");
+  // 文字和網址分開給，LINE 等 App 常只收文字、網址被丟掉；網址直接寫進文字裡
+  main.onclick = canShareNative ? async () => { try { await navigator.share({ title: "問名堂", text: msg() }); } catch (_) {} } : () => copy(msg(), "連結抄好了，貼到LINE會帶著批命卡");
   // 2. 整張長圖：另外存、另外傳（IG、相簿）
   let longP = null;
   const getLong = () => longP || (longP = drawLongCard(R).then(cardBlob));
@@ -826,7 +828,7 @@ async function openShare(R) {
 }
 
 // 朋友傳來的連結：#n=名字&g=m|f&s=姓氏字數&t=所問&b=1（原批有配八字）
-// 朋友這邊沒有生日，一律照名字筆畫重算，畫面上的評等、分數和點進去看到的一定一致
+// 朋友這邊沒有生日，細項照名字筆畫重算；評等與判詞用連結帶來的（gr、h），跟分享卡上的一致
 function incoming() {
   const q = new URLSearchParams(location.hash.length > 1 ? location.hash.slice(1) : location.search);
   const n = [...(q.get("n") || "")].filter(c => /\p{Script=Han}/u.test(c));
@@ -834,7 +836,9 @@ function incoming() {
   const g = q.get("g") === "f" ? "f" : "m";
   const t = TOPICS.some(x => x[0] === q.get("t")) ? q.get("t") : "all";
   const sl = q.get("s") === "2" ? 2 : 1;
-  return { chars: n, name: n.join(""), g, t, sl, bazi: q.get("b") === "1" };
+  const gr = GRADES.includes(q.get("gr")) ? q.get("gr") : null;
+  const h = /^[\p{Script=Han}，]{4,24}$/u.test(q.get("h") || "") ? q.get("h") : null;
+  return { chars: n, name: n.join(""), g, t, sl, bazi: q.get("b") === "1", gr, h };
 }
 const friend = incoming();
 async function showFriend(x) {
@@ -846,22 +850,25 @@ async function showFriend(x) {
   renderPaper(); $("#seal").classList.add("on");
   speak(`剛剛有人拿「${esc(x.name)}」來給我看。<span class="q">換你了，坐。</span>`);
   const keys = keyLines(R0);
+  // 評等、判詞跟分享卡一致：用連結帶來的；舊連結沒帶就用重算的
+  const G = x.gr || R0.grade, H = x.h || (G === R0.grade ? R0.headline : null), same = G === R0.grade;
+  const diff = x.bazi && !same ? `他那張有配八字，批到${G}。生日沒有傳過來，底下只照名字筆畫看，是${R0.grade}。` : "";
   act.innerHTML = `<div class="hero friend">
       <div class="score">${esc(x.name)}・${gtxt(x.g)}</div>
-      <div class="grade">${R0.grade}</div>
-      <div class="hl">${clauses(R0.headline + "。")}</div>
-      <div class="hlp">${prose(R0.headlinePlain)}</div>
+      <div class="grade">${G}</div>
+      ${H ? `<div class="hl">${clauses(H + "。")}</div>` : ""}
+      ${same && !x.bazi ? `<div class="hlp">${prose(R0.headlinePlain)}</div>` : ""}
     </div>
     <div class="grid5">${gridTiles(R0, false)}</div>
     <div class="keys f-slip">
       ${keys.map(k => `<div class="key"><p class="key-l">${k.label}<small>${k.grid}${han(k.n)}・${k.lvName}</small></p><p class="key-t">${prose(k.text)}</p></div>`).join("")}
       <div class="key"><p class="key-l">先生總說</p><p class="key-t">${prose(summaryLine(R0))}</p></div>
-      ${x.bazi ? `<p class="key-note">他那張有配八字，這裡只照名字筆畫看。</p>` : ""}
+      ${x.bazi ? `<p class="key-note">${diff || "他那張有配八字，這裡只照名字筆畫看。"}</p>` : ""}
     </div>
     <button type="button" class="prop red seat-main" data-m="read"><span class="in"><span class="t">換我看名字</span><span class="s">寫下你的名字，先生算給你看</span></span></button>
     <div class="seat-sub"><button type="button" class="opt small" id="seeFriend">看${esc(x.name)}的整張批命</button></div>`;
   act.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { S.mode = b.dataset.m; S.chars = []; S.surnameLen = null; askName(); });
-  $("#seeFriend").onclick = () => showReading(R0, { friend: true, back: () => showFriend(x), say: x.bazi ? `他那張有配八字，<span class="q">我這裡只看名字。</span>` : null });
+  $("#seeFriend").onclick = () => showReading(R0, { friend: true, back: () => showFriend(x), say: x.bazi ? (same ? `他那張有配八字，<span class="q">我這裡只看名字。</span>` : `他那張配了八字，批到${G}。<span class="q">我這裡只看名字，是${R0.grade}。</span>`) : null });
   history.replaceState(null, "", location.pathname);
 }
 
