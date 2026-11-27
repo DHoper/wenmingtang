@@ -72,16 +72,21 @@ function ageText(R) {
   let age = y - b.y; if (m < b.m || (m === b.m && d < b.d)) age--;
   return `民國${roc}年次，今年${age}歲`;
 }
+// 三個字（連姓）的五行對上八字：哪個是他要的、哪個是他怕的
+export function charFit(R) {
+  const b = R.bazi, say = e => !e ? "五行不明" : e === b.yong ? "他最要的" : b.xi.includes(e) ? "也幫得到他" : b.ji.includes(e) ? "他怕的" : "不好不壞";
+  return R.chars.map(c => `${c.part}「${c.ch}」屬${c.wuxing || "？"}，${say(c.wuxing)}`).join("；");
+}
 export function aiBasis(R) {
   const w = R.wuge, g = k => `${w[k].n}畫，${w[k].el}，${w[k].level}，「${w[k].name}」，判語「${w[k].verdict}」，${(w[k].tags || []).join("、") || "無"}`;
   return {
     姓名: R.name, 乾坤: R.gender === "f" ? "坤造（女）" : "乾造（男）", 年紀: ageText(R),
     名字用字: R.chars.filter(c => c.part !== "姓").map(c => c.ch).join("、"), 所問: R.sections.find(s => s.key === "topic")?.title,
-    各字筆畫: R.chars.map(c => `${c.part}「${c.ch}」${c.strokes}畫`).join("、"),
+    各字筆畫: R.chars.map(c => `${c.part}「${c.ch}」${c.strokes}畫，屬${c.wuxing || "五行不明"}`).join("、"),
     評等: R.grade, 批語: R.headline,
     五格: { 天格: g("tian"), 人格: g("ren"), 地格: g("di"), 外格: g("wai"), 總格: g("zong") },
     三才: `${R.sancai.key}，${R.sancai.level}`,
-    八字: R.bazi ? { 四柱: R.bazi.pillars.map(p => p.gz).join(" "), 日主: R.bazi.dmGan + R.bazi.dm, 強弱: R.bazi.strength, 用神: R.bazi.yong, 喜神: R.bazi.xi, 忌神: R.bazi.ji, 推論: R.bazi.reasons } : "沒有給生辰",
+    八字: R.bazi ? { 四柱: R.bazi.pillars.map(p => p.gz).join(" "), 日主: R.bazi.dmGan + R.bazi.dm, 強弱: R.bazi.strength, 用神: R.bazi.yong, 喜神: R.bazi.xi, 忌神: R.bazi.ji, 推論: R.bazi.reasons, 用字配合: charFit(R) } : "沒有給生辰",
     各段批語: Object.fromEntries(R.sections.map(s => [s.title, s.pi.join("")])),
     建議改名: R.renameAdvised ? R.renameWhy.join("，") : "不必",
   };

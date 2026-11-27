@@ -50,7 +50,7 @@ const REN_ZONG = {
 const LV_SAY = { 2: "大吉的數", 1: "吉數", 0.5: "好的多、壞的少", "-0.5": "壞的多、好的少", "-1": "凶數", "-2": "大凶的數" };
 const SANCAI_SAY = { 大吉: "大順", 吉: "算順", 吉凶參半: "一半好一半卡", 凶多於吉: "卡卡的", 凶: "不順" };
 const ROLE_SAY = {
-  tian: "天格跟著姓走，祖上給的，我順帶看看。",
+  tian: "天格是姓自己算的，姓改不了，好壞不必太掛心；姓的筆畫還會跟名字合起來算人格、總格，那才要緊。",
   ren: "人格最要緊，看的就是你這個人。",
   di: "地格看前半生，也看家裡、看小孩。",
   wai: "外格看出外，朋友、貴人都看這格。",
@@ -207,7 +207,7 @@ export function reading(p) {
   sections.push({
     key: "sancai", title: "三才配置",
     pi: [`天${sc.key[0]}、人${sc.key[1]}、地${sc.key[2]}，${sc.level}。`, `${TIAN_REN[ev.rel.tianRen][0]}；${REN_DI[ev.rel.renDi][0]}；${SANCAI_LV[sc.level]}。`],
-    bai: `你是天${sc.key[0]}、人${sc.key[1]}、地${sc.key[2]}，${SANCAI_SAY[sc.level]}。${sc.disputed ? "這個配法，師父們講的不一樣，我照我看的講。" : ""}${TIAN_REN[ev.rel.tianRen][1]}${REN_DI[ev.rel.renDi][1]}`,
+    bai: `天、人、地三格配起來${SANCAI_SAY[sc.level]}。${sc.disputed ? "這個配法，師父們講的不一樣，我照我看的講。" : ""}${TIAN_REN[ev.rel.tianRen][1]}${REN_DI[ev.rel.renDi][1]}`,
   });
   sections.push({
     key: "outer", title: "出外與晚運",
@@ -217,8 +217,17 @@ export function reading(p) {
 
   if (ev.bazi && ev.match) {
     const b = ev.bazi, m = ev.match;
-    const gl = m.grids.map(g => `${({ ren: "人格", di: "地格", zong: "總格" })[g.key]}屬${g.el}是${g.tag}`).join("、");
-    const cl = m.chars.map(c => c.el ? `「${c.ch}」屬${c.el}是${c.tag}` : `「${c.ch}」五行我不敢亂斷`).join("、");
+    // 白話不講用神忌神這些名稱，講成「你要的」「你怕的」
+    const fit = e => !e ? "五行我不敢亂斷" : e === b.yong ? "正是你最要的" : b.xi.includes(e) ? "也幫得到你" : b.ji.includes(e) ? "偏偏是你怕的" : "不好不壞";
+    const gl = m.grids.map(g => `${({ ren: "人格", di: "地格", zong: "總格" })[g.key]}屬${g.el}，${fit(g.el)}`).join("；");
+    // 字照「要的／怕的」分組講，不要每個字重複一次
+    const all = [...ev.sInfo.map((c, i) => ({ t: `${i ? "" : "姓"}「${c.ch}」`, e: c.wuxing })), ...ev.gInfo.map(c => ({ t: `「${c.ch}」`, e: c.wuxing }))].filter((x, i, a) => a.findIndex(y => y.t === x.t) === i);
+    const groups = [];
+    for (const x of all) { const f = fit(x.e), g = groups.find(y => y.f === f); g ? g.xs.push(x) : groups.push({ f, xs: [x] }); }
+    const charsSay = groups.length === 1 && all.length > 1
+      ? `${all.map(x => `${x.t}屬${x.e || "？"}`).join("、")}，${(n => n === 2 ? "兩" : han(n))(all.length)}個字${groups[0].f.replace(/^偏偏是/, "全是").replace(/^正是/, "全是").replace(/^也/, "都")}`
+      : groups.map(g => `${g.xs.map(x => `${x.t}屬${x.e || "？"}`).join("、")}，${g.f}`).join("；");
+    const surBad = ev.sInfo.some(c => b.ji.includes(c.wuxing));
     const renTag = m.grids[0].tag;
     sections.push({
       key: "bazi", title: "八字配合",
@@ -228,11 +237,11 @@ export function reading(p) {
         `取${b.yong}為用${b.xi.length ? `，${b.xi.join("、")}為喜` : ""}${b.ji.length ? `，忌${b.ji.join("、")}` : ""}。`,
         renTag === "用神" ? "名之人格正合用神，數氣相投。" : renTag === "喜神" ? "名之人格得喜神之氣，可。" : renTag === "忌神" ? "名之人格反犯忌神，宜易之。" : "名之人格為閒神，無大礙。",
       ],
-      bai: `你是${b.dmGan}${b.dm}的命，八字裡幫你的力量大概${(n => n === 2 ? "兩" : han(n))(Math.max(1, Math.round(b.support * 10)))}成，算${b.strength}。` +
-        `你最要的是${b.yong}${b.xi.length ? `；${b.xi.join("、")}也幫得到你` : ""}${b.ji.length ? `；${b.ji.join("、")}跟你不合，要避開` : ""}。` +
-        `再看名字：${gl}；用的字，${cl}。` +
-        (renTag === "忌神" ? "人格偏偏落在忌神，等於每天被人叫著跟你不合的五行。名字最該改的，就是這裡。" :
-          renTag === "用神" ? "人格剛好落在用神，名字天天在替你補。這是好名字。" : ""),
+      bai: `你命裡最要${b.yong}${b.xi.length ? `，${b.xi.join("、")}也幫得到你` : ""}${b.ji.length ? `；最怕${b.ji.join("、")}` : ""}。` +
+        `再看名字，連姓一起看：${charsSay}。${gl}。` +
+        (surBad ? "姓改不了，名字就更要補回來。" : "") +
+        (renTag === "忌神" ? "人格偏偏落在你怕的五行，等於每天被人叫著跟你不合的東西，名字最該調的就是這裡。" :
+          renTag === "用神" ? "人格剛好落在你最要的五行，名字天天在替你補，這是好名字。" : ""),
       reasons: b.reasons,
     });
     const z = ev.zodiac;
