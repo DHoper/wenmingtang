@@ -7,7 +7,7 @@ import { computeBazi, ZHI } from "./engine/bazi.js";
 import { reading, han } from "./engine/reading.js";
 import { evaluate, GRID_INFO, GRID_KEYS } from "./engine/analyze.js";
 import { suggestNames } from "./engine/rename.js";
-import { PLACES, TOPICS, COMPOUND, AMBIGUOUS } from "./data/misc.js";
+import { PLACES, PLACE_GROUPS, placeOf, TOPICS, COMPOUND, AMBIGUOUS } from "./data/misc.js";
 import { slot, preload } from "./assets.js";
 import { aiAvailable, aiAsk, askLeft, LIMITS, aiReadingFull, readingsLeft, readingKey, cachedReading, readingPending } from "./ai.js";
 import { READING_TAGS } from "./ai-prompt.js";
@@ -19,7 +19,7 @@ const $ = s => document.querySelector(s);
 const app = $("#app"), say = $("#say"), act = $("#act"), sheet = $("#sheet"), paper = $("#paper"), paperText = $("#paperText"), canvas = $("#canvas"), viewport = $("#viewport");
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 // 斷句：一個子句不拆開（批語、標題用）；白話裡的「象名」不拆開
-const clauses = t => esc(t).split(/(?<=[，；。、\uFF01？　])/).filter(Boolean).map(c => `<span class="cl">${c}</span>`).join("");
+const clauses = t => esc(t).split(/(?<=[，；。、\uFF01？　])/).filter(Boolean).map(c => `<span class="cl">${c.replace(/「[^」]{1,8}」/g, m => `<span class="nw">${m}</span>`)}</span>`).join("");
 const prose = t => esc(t).replace(/「[^」]{1,8}」/g, m => `<span class="nw">${m}</span>`);
 const gtxt = g => g === "f" ? "坤造" : "乾造";
 // 一百以上的中文數字（民國年用）
@@ -251,8 +251,8 @@ function askBirth() {
   setPhase("birth"); pose("speak"); setBack(askGender);
   speak(S.mode === "name" ? `小孩<span class="q">哪一天生的？</span>還沒出世，預產期也行。` : `<span class="q">幾年次的？</span>生日給我，八字一起看。`);
   act.innerHTML = `<div class="props">
-      <button type="button" class="prop red" id="giveCard"><span class="in"><span class="t">給生日</span><span class="s">八字、生肖一起看</span></span></button>
-      <button type="button" class="prop f-wood" id="noCard"><span class="in"><span class="t">先不用</span><span class="s">只看名字筆畫</span></span></button>
+      <button type="button" class="prop red" id="giveCard"><span class="in"><span class="t">給生日</span><span class="s">八字、<wbr>生肖一起看</span></span></button>
+      <button type="button" class="prop f-wood" id="noCard"><span class="in"><span class="t">先不用</span><span class="s">只看名字<wbr>筆畫</span></span></button>
     </div>`;
   loadLunar().catch(() => {});
   $("#giveCard").onclick = openBirthCard;
@@ -326,8 +326,8 @@ function openBirthCard() {
   Y.innerHTML = Array.from({ length: nowY + 2 - 1920 + 1 }, (_, i) => nowY + 2 - i).map(y => `<option value="${y}">${y}　${yName(y)}</option>`).join("");
   H.innerHTML = `<option value="">不知道幾點</option>` + Array.from({ length: 24 }, (_, h) => `<option value="${h}">${num(h)}點（${ZHI[Math.floor((h + 1) / 2) % 12]}時）</option>`).join("");
   Mi.innerHTML = Array.from({ length: 60 }, (_, m) => `<option value="${m}">${m ? num(m) + "分" : "整點"}</option>`).join("");
-  P.innerHTML = `<optgroup label="臺灣">${PLACES.filter(p => p[2] === "Asia/Taipei").map(p => `<option>${p[0]}</option>`).join("")}</optgroup><optgroup label="海外">${PLACES.filter(p => p[2] !== "Asia/Taipei").map(p => `<option>${p[0]}</option>`).join("")}</optgroup>`;
-  Y.value = prev?.y || (S.mode === "name" ? nowY : 1990); P.value = prev?.place || "臺北市";
+  P.innerHTML = PLACE_GROUPS.map(([g, names]) => `<optgroup label="${g}">${names.map(n => `<option>${n}</option>`).join("")}</optgroup>`).join("");
+  Y.value = prev?.y || (S.mode === "name" ? nowY : 1990); P.value = prev?.place ? placeOf(prev.place)[0] : "臺北市";
   H.value = prev && prev.h !== null && prev.h !== undefined ? prev.h : ""; Mi.value = prev?.mi || 0;
   const fillMonths = () => { const keep = +M.value || prev?.m || 1; M.innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${cal === "lunar" ? LMON[i + 1] + "月" : num(i + 1) + "月"}</option>`).join(""); M.value = keep; };
   const fillDays = () => {
@@ -357,14 +357,13 @@ function openBirthCard() {
     $("#ziBtn").innerHTML = zi === "early" ? `夜裡十一點以後出生，<b>算隔天</b>` : `夜裡十一點以後出生，<b>過十二點才算隔天</b>`;
   };
   const input = () => ({ calendar: cal, y: +Y.value, m: +M.value, d: +D.value, leap: cal === "lunar" && leap, h: H.value === "" ? null : +H.value, mi: +Mi.value, place: P.value, ziRule: zi });
-  const placeOf = n => PLACES.find(p => p[0] === n);
   const update = async () => {
     write();
     const pv = $("#bPreview");
     try {
       await loadLunar();
       const inp = input(), b = computeBazi({ ...inp, place: placeOf(inp.place) }, L), ts = b.trueSolar;
-      pv.innerHTML = `八字　<b>${b.pillars.map(p => p.gz).join("　")}</b><br>${b.lunarText.replace("腊", "臘")}${ts ? `・照當地日頭算是${num(ts.h)}點${ts.mi ? num(ts.mi) + "分" : "整"}` : "・沒時辰，只排三柱"}`;
+      pv.innerHTML = `八字　<b>${b.pillars.map(p => p.gz).join("　")}</b><br>${b.lunarText.replace("腊", "臘")}${ts ? (ts.local ? "・照出生地的鐘點排" : `・照當地日頭算是${num(ts.h)}點${ts.mi ? num(ts.mi) + "分" : "整"}`) : "・沒時辰，只排三柱"}`;
     } catch (_) { pv.textContent = "萬年曆翻不到這一天，換一天看看。"; }
   };
   const setCal = async c => { cal = c; leap = false; if (c === "lunar") await loadLunar().catch(() => {}); fillMonths(); fillDays(); update(); };
@@ -904,7 +903,7 @@ function refreshHistory() {
       const x = h[+b.dataset.i];
       await ready;
       S.mode = "read"; S.chars = [...x.name]; S.surnameLen = x.surnameLen; S.gender = x.gender; S.topic = x.topic || "all"; S.birth = x.birth; S.bazi = null;
-      if (x.birth) { await loadLunar(); S.bazi = computeBazi({ ...x.birth, place: PLACES.find(p => p[0] === x.birth.place) }, L); }
+      if (x.birth) { await loadLunar(); S.bazi = computeBazi({ ...x.birth, place: placeOf(x.birth.place) }, L); }
       const sp = currentSplit();
       showReading(reading({ surname: sp.surname, given: sp.given, gender: S.gender, topic: S.topic, bazi: S.bazi }), { back: () => btn.onclick() });
     });

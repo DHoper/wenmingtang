@@ -53,7 +53,7 @@ with sync_playwright() as p:
         page.click("#giveCard"); page.wait_for_timeout(1500)
         page.select_option("#bY", "1990"); page.select_option("#bM", "5"); page.select_option("#bD", "17"); page.select_option("#bH", "9")
         page.wait_for_timeout(800); shot("birthcard")
-        page.click("#birthForm button[type=submit]"); page.wait_for_timeout(900); shot("topic")
+        page.click("#bOk"); page.wait_for_timeout(900); shot("topic")
         page.click("[data-t=career]"); page.wait_for_timeout(400)
         page.click("#goCount"); page.wait_for_timeout(2600); shot("count")
         page.wait_for_selector(".hero", timeout=30000); page.wait_for_timeout(900); shot("reading")

@@ -43,7 +43,9 @@ const FIX = [
   [/做出/g, "做"], [/進行/g, ""], [/機會/g, "時機"], [/一份/g, ""], [/代表/g, "就是"], [/意味著/g, "就是"], [/象徵/g, "就像"],
   [/[—–]+/g, "，"], [/！/g, "。"],
 ];
-export function cleanAI(t) { let o = String(t); for (const [a, b] of FIX) o = o.replace(a, b); return o.replace(/，{2,}/g, "，").replace(/^，/, ""); }
+// 英文保險：模型偶爾夾英文，連同包著它的括號一起拿掉（例如「三才（Three Talents）」→「三才」）
+const LATIN = /\s*[（(]\s*[A-Za-z][A-Za-z0-9\s.,'&\-]*[)）]|\s*[A-Za-z][A-Za-z0-9'\-]*(?:\s+[A-Za-z][A-Za-z0-9'\-]*)*\s*/g;
+export function cleanAI(t) { let o = String(t).replace(LATIN, ""); for (const [a, b] of FIX) o = o.replace(a, b); return o.replace(/，{2,}/g, "，").replace(/^，/, "").replace(/，。/g, "。"); }
 
 // 把 AI 依【標籤】分段的文字切成 { key: 文字 }
 const TAG_MAP = Object.fromEntries([...READING_TAGS, ["总评", "headline"], ["总格", "zong"], ["出外与晚运", "outer"], ["所问", "topic"], ["总结", "summary"], ["晚運", "outer"], ["出外", "outer"]]);

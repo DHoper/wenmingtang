@@ -16,6 +16,11 @@ function boot() {
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   if (on) ambience(true);
 }
+// 切到別的 App、鎖螢幕或換分頁時整個靜音（暫停音訊），回來再接著響
+function pause() { if (ctx && ctx.state === "running") ctx.suspend(); }
+document.addEventListener("visibilitychange", () => { if (!ctx) return; if (document.hidden) pause(); else if (on) ctx.resume(); });
+addEventListener("pagehide", pause);
+addEventListener("blur", () => { if (document.hidden) pause(); });
 addEventListener("pointerdown", boot, { capture: true });
 addEventListener("keydown", boot, { capture: true });
 

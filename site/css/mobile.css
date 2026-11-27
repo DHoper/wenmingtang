@@ -387,3 +387,25 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .share-note, .pic-tip { text-wrap: pretty; overflow-wrap: anywhere; }
 .share-icons .sicon svg { width: clamp(22px, 12cqi, 34px); height: auto; aspect-ratio: 1; padding: clamp(5px, 2.4cqi, 7px); }
 #shH { padding-inline: 2.2em; text-wrap: balance; }
+
+/* 11-27 手機放大字體（Chrome 會把整頁放大，等於畫面變窄）：窄畫面時收小字級與留白，名字、分頁鈕不斷行 */
+.nw { white-space: nowrap; }
+.mode button { white-space: nowrap; overflow: hidden; }
+.rtop .who { white-space: nowrap; overflow: hidden; text-overflow: clip; }
+@media (max-width: 340px) {
+  .rtop { gap: 6px; }
+  .medal { width: 72px; height: 72px; }
+  .medal i { width: 36px; height: 36px; background-size: 147px auto; background-position: -55px -20px; }
+  .rtop .who { font-size: clamp(16px, 6.2vw, 22px); letter-spacing: .02em; }
+  .rtop .who small { display: block; margin: 2px 0 0; }
+  .mode { gap: 4px; }
+  .mode button { font-size: clamp(12px, 4.3vw, 15px); letter-spacing: 0; padding: 0; }
+  .prop { min-height: 112px; }
+  .prop .t { font-size: clamp(18px, 7vw, 26px); letter-spacing: .04em; }
+  .prop .s { font-size: 13px; letter-spacing: 0; margin-top: 4px; }
+  .reading { padding: 4px 4px 8px; border-width: 24px 14px; border-image-width: 24px 14px; }
+  .pi { font-size: 17px; letter-spacing: .02em; padding-left: 12px; }
+  .bai { font-size: 15px; }
+  .sec h3 { font-size: 18px; }
+}
+.prop .s { word-break: keep-all; }

@@ -7,6 +7,21 @@
 //   舊的 USER_READINGS／USER_ASKS／SITE_CALLS 變數不再讀取（後台若還留著也不影響）。每分鐘防連點照舊。
 import { messagesFor, cleanQuestion, LIMITS } from "../../site/js/ai-prompt.js";
 
+// 提示詞：每 5 分鐘到網站抓一次 js/ai-prompt.js，取出裡面的人設與規矩；改提示詞只要推上 GitHub，不必重新部署。
+// 抓不到或格式不對，就用部署時打包進來的那一份。
+const PROMPT_URL = "https://dhoper.github.io/wenmingtang/js/ai-prompt.js", PROMPT_KEYS = ["PERSONA", "RULES", "BOUNDS", "FORMAT", "FORMAT_READING"];
+let promptCache = { t: 0, parts: null };
+async function promptParts(env) {
+  if (promptCache.parts && Date.now() - promptCache.t < 300e3) return promptCache.parts;
+  try {
+    const r = await fetch(env.PROMPT_URL || PROMPT_URL, { cf: { cacheTtl: 300 } });
+    const src = r.ok ? await r.text() : "", parts = {};
+    for (const m of src.matchAll(/export const (\w+) = `([^`]*)`;/g)) if (PROMPT_KEYS.includes(m[1])) parts[m[1]] = m[2];
+    if (PROMPT_KEYS.every(k => parts[k] && parts[k].length > 50 && !parts[k].includes("${"))) promptCache = { t: Date.now(), parts };
+  } catch (_) {}
+  return promptCache.parts;
+}
+
 const DEFAULT_ORIGINS = "https://gxgemini777.github.io,https://dhoper.github.io,http://127.0.0.1:8765,http://localhost:8765";
 const SITE_PATH = "/wenmingtang/";
 const burst = new Map(); // 短時間連發的保護（同一個 isolate 內）
@@ -128,7 +143,7 @@ async function askAI(req, env, cors) {
     up = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.DEEPSEEK_API_KEY}` },
-      body: JSON.stringify({ model: env.MODEL || "deepseek-chat", messages: messagesFor(basis, question, mode), stream: true, max_tokens: mode === "reading" ? 2200 : 420, temperature: mode === "reading" ? 0.9 : 0.85 }),
+      body: JSON.stringify({ model: env.MODEL || "deepseek-chat", messages: messagesFor(basis, question, mode, await promptParts(env)), stream: true, max_tokens: mode === "reading" ? 2200 : 420, temperature: mode === "reading" ? 0.8 : 0.75 }),
     });
   } catch (_) { up = null; }
   if (!up || !up.ok || !up.body) { await refund(); return json({ error: "upstream", status: up ? up.status : 0 }, 502, cors); }

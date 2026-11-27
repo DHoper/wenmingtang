@@ -60,6 +60,8 @@ export function equationOfTime(y, mo, d) {
 
 /** 鐘錶時間 → 真太陽時 */
 export function trueSolar({ y, m, d, h, mi }, place) {
+  // 海外（不知道經度）：照出生地當地的鐘點，不校正
+  if (!place || place[1] == null) return { y, m, d, h, mi, offsetHours: null, eot: 0, shiftMin: 0, local: true };
   const [, lng, tz] = place;
   const off = tzOffset(y, m, d, h, mi, tz);
   const utc = Date.UTC(y, m - 1, d, h, mi) - off * 3600e3;
