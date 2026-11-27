@@ -1,7 +1,7 @@
 // 批命文字：把 evaluate() 的結果組成兩層文字，輸出 R
 //   pi  ＝ 批語（文言，老師傅批在紅紙上的話）
 //   bai ＝ 白話（現代口語，解釋批語在說什麼、該怎麼做）
-import { evaluate, shouldRename, GRID_INFO, GRID_KEYS, pick } from "./analyze.js";
+import { evaluate, shouldRename, baziNote, EL_LOOK, GRID_INFO, GRID_KEYS, pick } from "./analyze.js";
 import { ORGAN } from "./bazi.js";
 import { TOPICS } from "../data/misc.js";
 
@@ -91,11 +91,9 @@ function gridSection(k, g, female, ev) {
 function headline(ev, seed) {
   const r = ev.wuge.ren, z = ev.wuge.zong, sc = ev.sancai;
   const p = [];
-  if (ev.match) {
-    const tag = ev.match.grids[0].tag;
-    if (tag === "用神") p.push(r.lv > 0 ? "名合用神，數氣兩得" : "氣合用神，數則稍欠");
-    else if (tag === "忌神") p.push(r.lv > 0 ? "數雖可取，氣不相投" : "數氣俱乖");
-  }
+  // 八字合得明顯或不合得明顯才拿來當判詞，其他照五格講
+  if (ev.match && ev.match.balance >= 0.4) p.push(r.lv > 0 ? pick(seed + "b", ["名合用神，數氣兩得", "數吉氣順，相得益彰"]) : pick(seed + "b", ["氣合用神，數則稍欠", "五行得用，數理待補"]));
+  else if (ev.match && ev.match.balance <= -0.4) p.push(r.lv > 0 ? pick(seed + "b", ["數雖可取，氣不相投", "數理雖佳，五行未協"]) : pick(seed + "b", ["數氣俱乖", "數氣兩虧，宜早調理"]));
   if (!p.length) {
     if (r.lv >= 1 && sc.v >= 0.35) p.push(pick(seed, ["主運得位，三才相生", "人格當令，三才通順"]));
     else if (r.lv >= 1) p.push(pick(seed, ["主運可取，五行稍滯", "人格得數，三才未順"]));
@@ -110,7 +108,7 @@ function headline(ev, seed) {
 function headlinePlain(ev) {
   const r = ev.wuge.ren, z = ev.wuge.zong;
   const a = r.lv >= 1 ? "人格是好數，名字的底子好" : r.lv <= -1 ? "人格的數不好，名字的底子就差一截" : "人格不好不壞，中規中矩";
-  const b = ev.match ? (ev.match.grids[0].tag === "用神" ? "，又剛好補到你八字最欠的" : ev.match.grids[0].tag === "忌神" ? "，可惜跟你的八字不對盤" : "") : "";
+  const b = !ev.match ? "" : ev.match.balance >= 0.4 ? "，用的字又剛好補到你八字要的" : ev.match.balance <= -0.4 ? "，可惜用的字跟你八字不太對盤" : "";
   const c = z.lv >= 1 ? "。老運不錯。" : z.lv <= -1 ? "。後半輩子要多顧一點。" : "。整個看起來算平順。";
   return a + b + c;
 }
@@ -185,11 +183,12 @@ function summarySection(ev, topic, renameWhy) {
   if (renameWhy.length) {
     const dir = ev.bazi ? `新名字要挑屬${ev.bazi.yong}${ev.bazi.xi.length ? "、" + ev.bazi.xi[0] : ""}的，人格屬${ev.bazi.yong}最好。` : "新名字要讓人格、總格都是好數，三才也要順。";
     end = `我的意思是要改。${dir}`;
-  } else end = ev.grade === "上上" || ev.grade === "上" ? "這名字好好用就好。" : "名字可以用，不一定要改。";
+  } else if (baziNote(ev)) end = `名字不用改，取個屬${baziNote(ev)}的常用名補一下就好。`;
+  else end = ev.grade === "上上" || ev.grade === "上" ? "這名字好好用就好。" : "名字可以用，不一定要改。";
   const pi = [];
   if (best) pi.push(`長在${SUM[best.k][0]}`);
   if (worst) pi.push(`短在${SUM[worst.k][0]}`);
-  pi.push(renameWhy.length ? "宜擇吉更易" : ev.grade === "上上" || ev.grade === "上" ? "守之可也" : "可用隨緣");
+  pi.push(renameWhy.length ? "宜擇吉更易" : baziNote(ev) ? "以別號補之" : ev.grade === "上上" || ev.grade === "上" ? "守之可也" : "可用隨緣");
   const bai = `${best ? `這個名字好在${SUM[best.k][1]}` : "這個名字沒有哪一格特別出色"}；${worst ? `怕的是${SUM[worst.k][2]}` : "也沒有特別要擔心的"}。${topicLine}${end}`;
   return { key: "summary", title: "總結", pi: [pi.join("，") + "。"], bai };
 }
@@ -200,7 +199,7 @@ export function reading(p) {
   ev.bazi = p.bazi || null;
   const female = p.gender === "f";
   const name = [...p.surname, ...p.given].join("");
-  const renameWhy = shouldRename(ev);
+  const renameWhy = shouldRename(ev), note = baziNote(ev);
   const sc = ev.sancai;
   const sections = GRID_KEYS.map(k => gridSection(k, ev.wuge[k], female, ev));
 
@@ -235,12 +234,12 @@ export function reading(p) {
         `${female ? "坤" : "乾"}造　${b.pillars.map(x => x.gz).join("　")}。`,
         `日主${b.dmGan}${b.dm}，生於${b.pillars[1].gz[1]}月，${b.deLing ? "得令" : "失令"}，${b.strength}。`,
         `取${b.yong}為用${b.xi.length ? `，${b.xi.join("、")}為喜` : ""}${b.ji.length ? `，忌${b.ji.join("、")}` : ""}。`,
-        renTag === "用神" ? "名之人格正合用神，數氣相投。" : renTag === "喜神" ? "名之人格得喜神之氣，可。" : renTag === "忌神" ? "名之人格反犯忌神，宜易之。" : "名之人格為閒神，無大礙。",
+        renTag === "用神" ? "名之人格正合用神，數氣相投。" : renTag === "喜神" ? "名之人格得喜神之氣，可。" : renTag === "忌神" ? (renameWhy.length ? "名之人格反犯忌神，宜易之。" : "名之人格反犯忌神，以別號補之可也。") : "名之人格為閒神，無大礙。",
       ],
       bai: `你命裡最要${b.yong}${b.xi.length ? `，${b.xi.join("、")}也幫得到你` : ""}${b.ji.length ? `；最怕${b.ji.join("、")}` : ""}。` +
         `再看名字，連姓一起看：${charsSay}。${gl}。` +
         (surBad ? "姓改不了，名字就更要補回來。" : "") +
-        (renTag === "忌神" ? "人格偏偏落在你怕的五行，等於每天被人叫著跟你不合的東西，名字最該調的就是這裡。" :
+        (renTag === "忌神" ? (renameWhy.length ? "人格偏偏落在你怕的五行，等於每天被人叫著跟你不合的東西，名字最該調的就是這裡。" : "人格落在你怕的五行，不過整個看下來，不必為這個去改名，平常取個常用名補一下就好。") :
           renTag === "用神" ? "人格剛好落在你最要的五行，名字天天在替你補，這是好名字。" : ""),
       reasons: b.reasons,
     });
@@ -258,9 +257,10 @@ export function reading(p) {
   sections.push({ key: "topic", title: `所問之事：${(TOPICS.find(t => t[0] === topic) || TOPICS.find(t => t[0] === "all"))[1]}`, ...topicSection(topic, ev, female) });
   sections.push({
     key: "rename", title: "改名與否",
-    pi: [renameWhy.length ? "名有所損，宜擇吉更易。" : ev.grade === "上上" || ev.grade === "上" ? "名格俱佳，毋庸更易。" : "名可堪用，更易隨緣。"],
+    pi: [renameWhy.length ? "名有所損，宜擇吉更易。" : note ? "名格可取，五行稍乖，以別號補之。" : ev.grade === "上上" || ev.grade === "上" ? "名格俱佳，毋庸更易。" : "名可堪用，更易隨緣。"],
     bai: renameWhy.length
       ? `我直接講，${renameWhy.join("，")}。這要認真想一下。不想動戶口名簿，取個常用名，天天給人叫，也有效。`
+      : note ? `這名字本身不用改。只是用的字跟你八字不太合，平常取個屬${note}的常用名或小名，像${EL_LOOK[note]}這類的字，給人叫一叫，就補回來了。`
       : ev.grade === "上上" || ev.grade === "上" ? "這名字好好用就好，不用改。" : "名字可以用，沒有非改不可的毛病。要更好，我再挑幾個給你看。",
   });
 
@@ -273,7 +273,7 @@ export function reading(p) {
     wuge: ev.wuge, sancai: ev.sancai, rel: ev.rel,
     score: ev.score, grade: ev.grade, parts: ev.parts,
     headline: headline(ev, name), headlinePlain: headlinePlain(ev),
-    renameAdvised: renameWhy.length > 0, renameWhy,
+    renameAdvised: renameWhy.length > 0, renameWhy, baziNote: note,
     bazi: ev.bazi, match: ev.match, zodiac: ev.zodiac,
     sections,
   };

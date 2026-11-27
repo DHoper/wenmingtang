@@ -88,7 +88,7 @@ export function aiBasis(R) {
     三才: `${R.sancai.key}，${R.sancai.level}`,
     八字: R.bazi ? { 四柱: R.bazi.pillars.map(p => p.gz).join(" "), 日主: R.bazi.dmGan + R.bazi.dm, 強弱: R.bazi.strength, 用神: R.bazi.yong, 喜神: R.bazi.xi, 忌神: R.bazi.ji, 推論: R.bazi.reasons, 用字配合: charFit(R) } : "沒有給生辰",
     各段批語: Object.fromEntries(R.sections.map(s => [s.title, s.pi.join("")])),
-    建議改名: R.renameAdvised ? R.renameWhy.join("，") : "不必",
+    建議改名: R.renameAdvised ? R.renameWhy.join("，") : R.baziNote ? `不必改名；用的字跟八字不太合，取個屬${R.baziNote}的常用名補就好` : "不必",
   };
 }
 
