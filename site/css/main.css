@@ -266,7 +266,7 @@ button.g { cursor: pointer; font: inherit; }
 .sec:last-child { border-bottom: 0; }
 .sec h3 { margin: 0 0 8px; font: 700 20px/1.35 var(--song); letter-spacing: .08em; color: var(--vermilion); }
 .pi { margin: 0 0 12px; padding: 0 0 0 12px; border-left: 3px double var(--vermilion); font: 19px/1.9 var(--ming); color: #1f130b; letter-spacing: .06em; }
-.pi span { display: block; }
+.pi > span { display: block; }
 .bai { margin: 0; font: 400 16px/1.9 var(--sans); color: #33241a; }
 .reading[data-mode=pi] .bai, .reading[data-mode=pi] .reasons { display: none; }
 .reading[data-mode=bai] .pi { display: none; }
