@@ -249,7 +249,7 @@ async function loadLunar() {
 const afterBirth = () => S.mode === "name" ? doNaming() : askTopic();
 function askBirth() {
   setPhase("birth"); pose("speak"); setBack(askGender);
-  speak(S.mode === "name" ? `囝仔<span class="q">哪一天生的？</span>還沒出世，預產期也行。` : `<span class="q">幾年次的？</span>生日給我，八字一起看。`);
+  speak(S.mode === "name" ? `小孩<span class="q">哪一天生的？</span>還沒出世，預產期也行。` : `<span class="q">幾年次的？</span>生日給我，八字一起看。`);
   act.innerHTML = `<div class="props">
       <button type="button" class="prop red" id="giveCard"><span class="in"><span class="t">給生日</span><span class="s">八字、生肖一起看</span></span></button>
       <button type="button" class="prop f-wood" id="noCard"><span class="in"><span class="t">先不用</span><span class="s">只看名字筆畫</span></span></button>
@@ -466,7 +466,7 @@ function showReading(R, opts = {}) {
   renderPaper({ split: { surname: [...R.surname], given: [...R.given] } });
   paperText.querySelectorAll(".c").forEach((el, i) => { el.classList.add("shown"); el.querySelector(".n").textContent = han(R.chars[i].strokes); });
   $("#seal").classList.add("on");
-  const line = opts.say || (R.renameAdvised ? `這名字，<span class="q">我直說。</span>` : R.grade === "上上" || R.grade === "上" ? `<span class="q">這名字不錯。</span>你看看。` : `<span class="q">還可以，</span>有幾個所在要注意。`);
+  const line = opts.say || (R.renameAdvised ? `這名字，<span class="q">我直說。</span>` : R.grade === "上上" || R.grade === "上" ? `<span class="q">這名字不錯。</span>你看看。` : `<span class="q">還可以，</span>有幾個地方要注意。`);
   speak(line);
   const view = S.view;
   if (S.justCounted) { S.justCounted = false; setTimeout(() => sfx("bell"), 120); }
@@ -769,9 +769,11 @@ async function openShare(R) {
   box.onclick = e => { if (e.target === box) close(); };
   box.querySelector("#shClose").onclick = close;
   const msg = () => text + "\n" + link;
+  const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform));
   const setLinks = () => {
-    // LINE 官方的「分享文字」：網址放在文字裡，一定會跟著過去，LINE 也會照網址抓預覽卡
-    box.querySelector("#toLine").href = `https://line.me/R/share?text=${enc(msg())}`;
+    // 手機：LINE 官方的「分享文字」，網址寫在文字裡一定跟著過去，LINE 照網址抓預覽卡
+    // 電腦：line.me/R 要開 App，改用網頁版分享，只給網址（文字參數會讓網址被吃掉）
+    box.querySelector("#toLine").href = mobile ? `https://line.me/R/share?text=${enc(msg())}` : `https://social-plugins.line.me/lineit/share?url=${enc(link)}`;
     box.querySelector("#toFb").href = `https://www.facebook.com/sharer/sharer.php?u=${enc(link)}`;
     box.querySelector("#toTh").href = `https://www.threads.com/intent/post?text=${enc(text)}&url=${enc(link)}`;
   };
